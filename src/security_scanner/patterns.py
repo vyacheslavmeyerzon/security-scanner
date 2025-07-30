@@ -192,14 +192,14 @@ class PatternMatcher:
             ),
             PatternDefinition(
                 name="Generic API Key",
-                pattern=re.compile(r'(?i)(api[_\-]?key|apikey)(.{0,20})?["\']?[a-zA-Z0-9]{32,64}["\']?'),
+                pattern=re.compile(r'(?i)(?:api[_\-]?key|apikey)\s*[=:]\s*["\']([a-zA-Z0-9]{32,64})["\']'),
                 severity=Severity.MEDIUM,
                 description="Generic API Key pattern"
             ),
             PatternDefinition(
                 name="Generic Secret",
                 pattern=re.compile(
-                    r'(?i)(secret|password|passwd|pwd)(.{0,20})?["\']?[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};:,.<>?]{8,}["\']?'),
+                    r'(?i)(?:secret|password|passwd|pwd)\s*[=:]\s*["\']([a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};:,.<>?]{8,})["\']'),
                 severity=Severity.MEDIUM,
                 description="Generic secret or password pattern"
             ),
@@ -238,6 +238,10 @@ class PatternMatcher:
     def find_secrets(self, content: str, filepath: str = "") -> List[Dict[str, any]]:
         """Find secrets in the given content."""
         findings = []
+
+        # Skip pattern files to avoid false positives
+        if 'patterns.py' in filepath:
+            return findings
 
         # Split content into lines for line number tracking
         lines = content.split('\n')

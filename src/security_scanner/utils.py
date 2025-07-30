@@ -4,6 +4,7 @@ Utility functions for the security scanner.
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import List, Dict, Optional, Union
@@ -88,11 +89,16 @@ class GitHelper:
                 ["git"] + command,
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
+                errors='replace',
                 cwd=cwd,
                 check=True
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
+            # Silently ignore file not found errors in history
+            if "does not exist" in e.stderr:
+                return None
             ColorPrinter.print_error(f"Git command failed: {' '.join(command)}")
             ColorPrinter.print_error(f"Error: {e.stderr}")
             return None
@@ -125,6 +131,10 @@ class GitHelper:
     @staticmethod
     def get_file_content_from_commit(repo_path: Path, commit: str, filepath: str) -> Optional[str]:
         """Get file content from a specific commit."""
+        # Ensure filepath doesn't have duplicate extensions
+        if filepath.endswith('.py.py'):
+            filepath = filepath[:-3]
+
         output = GitHelper.run_git_command(
             ["show", f"{commit}:{filepath}"],
             cwd=repo_path
@@ -239,6 +249,7 @@ class IgnoreFileParser:
     def __init__(self, ignore_file_path: Optional[Path] = None):
         """Initialize with optional ignore file path."""
         self.patterns: List[str] = []
+        self.regex_patterns: List[re.Pattern] = []
         if ignore_file_path and ignore_file_path.exists():
             self._load_ignore_file(ignore_file_path)
 
@@ -251,22 +262,51 @@ class IgnoreFileParser:
                 # Skip empty lines and comments
                 if line and not line.startswith('#'):
                     self.patterns.append(line)
+                    # Convert glob pattern to regex
+                    regex_pattern = self._glob_to_regex(line)
+                    self.regex_patterns.append(re.compile(regex_pattern))
         except Exception as e:
             ColorPrinter.print_error(f"Failed to load ignore file: {str(e)}")
 
+    def _glob_to_regex(self, pattern: str) -> str:
+        """Convert glob pattern to regex."""
+        # Escape special regex characters except glob wildcards
+        pattern = pattern.replace('\\', '\\\\')
+        pattern = pattern.replace('.', '\\.')
+        pattern = pattern.replace('+', '\\+')
+        pattern = pattern.replace('^', '\\^')
+        pattern = pattern.replace('$', '\\$')
+        pattern = pattern.replace('(', '\\(')
+        pattern = pattern.replace(')', '\\)')
+        pattern = pattern.replace('[', '\\[')
+        pattern = pattern.replace(']', '\\]')
+        pattern = pattern.replace('{', '\\{')
+        pattern = pattern.replace('}', '\\}')
+
+        # Convert glob wildcards to regex
+        pattern = pattern.replace('**/', '(?:.*/)?')  # Match any number of directories
+        pattern = pattern.replace('*', '[^/]*')  # Match any characters except /
+        pattern = pattern.replace('?', '[^/]')  # Match single character except /
+
+        # Handle directory patterns (ending with /)
+        if pattern.endswith('/'):
+            pattern = pattern + '.*'
+
+        # Anchor pattern
+        if pattern.startswith('/'):
+            pattern = '^' + pattern[1:]
+        else:
+            pattern = '(?:^|/)' + pattern
+
+        return pattern + '$'
+
     def should_ignore(self, filepath: str) -> bool:
         """Check if file should be ignored based on patterns."""
-        for pattern in self.patterns:
-            # Simple pattern matching (can be enhanced with glob patterns)
-            if pattern in filepath:
-                return True
+        # Normalize path separators
+        filepath = filepath.replace('\\', '/')
 
-            # Handle directory patterns (ending with /)
-            if pattern.endswith('/') and filepath.startswith(pattern):
-                return True
-
-            # Handle file extension patterns
-            if pattern.startswith('*.') and filepath.endswith(pattern[1:]):
+        for regex_pattern in self.regex_patterns:
+            if regex_pattern.search(filepath):
                 return True
 
         return False

@@ -234,7 +234,7 @@ class SecurityScanner:
                     self.repo_path, commit, filepath
                 )
 
-                if content:
+                if content is not None:
                     file_result = self.scan_file(filepath, content)
 
                     # Add commit info to findings
