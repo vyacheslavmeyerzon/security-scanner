@@ -44,7 +44,7 @@ class PatternMatcher:
             ),
             PatternDefinition(
                 name="AWS Secret Key",
-                pattern=re.compile(r'(?i)aws(.{0,20})?(?-i)["\']?[0-9a-zA-Z/+=]{40}["\']?'),
+                pattern=re.compile(r'(?i)aws(.{0,20})?["\']?[0-9a-zA-Z/+=]{40}["\']?'),
                 severity=Severity.CRITICAL,
                 description="AWS Secret Access Key"
             ),
@@ -52,7 +52,7 @@ class PatternMatcher:
             # Cloud Services - Azure
             PatternDefinition(
                 name="Azure Storage Key",
-                pattern=re.compile(r'(?i)(?:storage|azure)(.{0,20})?(?-i)[a-zA-Z0-9/+=]{86}=='),
+                pattern=re.compile(r'(?i)(?:storage|azure)(.{0,20})?[a-zA-Z0-9/+=]{86}=='),
                 severity=Severity.CRITICAL,
                 description="Azure Storage Account Key"
             ),
@@ -92,7 +92,7 @@ class PatternMatcher:
             ),
             PatternDefinition(
                 name="Cohere API Key",
-                pattern=re.compile(r'(?i)cohere(.{0,20})?(?-i)[a-zA-Z0-9]{40}'),
+                pattern=re.compile(r'(?i)cohere(.{0,20})?[a-zA-Z0-9]{40}'),
                 severity=Severity.HIGH,
                 description="Cohere API Key"
             ),
@@ -146,7 +146,7 @@ class PatternMatcher:
             ),
             PatternDefinition(
                 name="Discord Token",
-                pattern=re.compile(r'(?i)discord(.{0,20})?(?-i)[a-zA-Z0-9]{24}\.[a-zA-Z0-9]{6}\.[a-zA-Z0-9\-_]{27}'),
+                pattern=re.compile(r'(?i)discord(.{0,20})?[a-zA-Z0-9]{24}\.[a-zA-Z0-9]{6}\.[a-zA-Z0-9\-_]{27}'),
                 severity=Severity.HIGH,
                 description="Discord Bot Token"
             ),
