@@ -3,11 +3,10 @@ Utility functions for the security scanner.
 """
 
 import json
-import os
 import re
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 from colorama import Fore, Style, init
 
 # Initialize colorama for cross-platform color support
@@ -21,18 +20,21 @@ class ColorPrinter:
         "CRITICAL": Fore.RED,
         "HIGH": Fore.YELLOW,
         "MEDIUM": Fore.MAGENTA,
-        "LOW": Fore.BLUE
+        "LOW": Fore.BLUE,
     }
 
     @classmethod
-    def print_finding(cls, finding: Dict[str, any], quiet: bool = False) -> None:
+    def print_finding(cls, finding: Dict[str, Any], quiet: bool = False) -> None:
         """Print a single finding with appropriate color."""
-        severity = finding['severity']
+        severity = finding["severity"]
         color = cls.SEVERITY_COLORS.get(severity, Fore.WHITE)
 
         if quiet:
             # Minimal output for quiet mode
-            print(f"{color}[{severity}] {finding['type']} in {finding['file']}:{finding['line']}")
+            print(
+                f"{color}[{severity}] {finding['type']} in "
+                f"{finding['file']}:{finding['line']}"
+            )
         else:
             # Detailed output
             print(f"\n{color}[{severity}] {finding['type']}{Style.RESET_ALL}")
@@ -40,11 +42,11 @@ class ColorPrinter:
             print(f"  File: {finding['file']}")
             print(f"  Line: {finding['line']}")
             print(f"  Secret: {finding['secret']}")
-            if finding.get('content'):
+            if finding.get("content"):
                 print(f"  Content: {finding['content'][:80]}...")
 
     @classmethod
-    def print_summary(cls, findings: List[Dict[str, any]]) -> None:
+    def print_summary(cls, findings: List[Dict[str, Any]]) -> None:
         """Print summary of findings."""
         if not findings:
             print(f"\n{Fore.GREEN}✓ No secrets found!{Style.RESET_ALL}")
@@ -53,9 +55,12 @@ class ColorPrinter:
         # Count by severity
         severity_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
         for finding in findings:
-            severity_counts[finding['severity']] += 1
+            severity_counts[finding["severity"]] += 1
 
-        print(f"\n{Fore.RED}⚠ Found {len(findings)} potential secrets:{Style.RESET_ALL}")
+        print(
+            f"\n{Fore.RED}⚠ Found {len(findings)} potential "
+            f"secrets:{Style.RESET_ALL}"
+        )
         for severity, count in severity_counts.items():
             if count > 0:
                 color = cls.SEVERITY_COLORS[severity]
@@ -82,17 +87,19 @@ class GitHelper:
         return git_dir.exists() and git_dir.is_dir()
 
     @staticmethod
-    def run_git_command(command: List[str], cwd: Optional[Path] = None) -> Optional[str]:
+    def run_git_command(
+        command: List[str], cwd: Optional[Path] = None
+    ) -> Optional[str]:
         """Run a Git command and return output."""
         try:
             result = subprocess.run(
                 ["git"] + command,
                 capture_output=True,
                 text=True,
-                encoding='utf-8',
-                errors='replace',
+                encoding="utf-8",
+                errors="replace",
                 cwd=cwd,
-                check=True
+                check=True,
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
@@ -110,34 +117,31 @@ class GitHelper:
     def get_staged_files(repo_path: Path) -> List[str]:
         """Get list of staged files in the repository."""
         output = GitHelper.run_git_command(
-            ["diff", "--cached", "--name-only"],
-            cwd=repo_path
+            ["diff", "--cached", "--name-only"], cwd=repo_path
         )
         if output:
-            return [f for f in output.split('\n') if f]
+            return [f for f in output.split("\n") if f]
         return []
 
     @staticmethod
     def get_all_files(repo_path: Path) -> List[str]:
         """Get all tracked files in the repository."""
-        output = GitHelper.run_git_command(
-            ["ls-files"],
-            cwd=repo_path
-        )
+        output = GitHelper.run_git_command(["ls-files"], cwd=repo_path)
         if output:
-            return [f for f in output.split('\n') if f]
+            return [f for f in output.split("\n") if f]
         return []
 
     @staticmethod
-    def get_file_content_from_commit(repo_path: Path, commit: str, filepath: str) -> Optional[str]:
+    def get_file_content_from_commit(
+        repo_path: Path, commit: str, filepath: str
+    ) -> Optional[str]:
         """Get file content from a specific commit."""
         # Ensure filepath doesn't have duplicate extensions
-        if filepath.endswith('.py.py'):
+        if filepath.endswith(".py.py"):
             filepath = filepath[:-3]
 
         output = GitHelper.run_git_command(
-            ["show", f"{commit}:{filepath}"],
-            cwd=repo_path
+            ["show", f"{commit}:{filepath}"], cwd=repo_path
         )
         return output
 
@@ -145,22 +149,20 @@ class GitHelper:
     def get_commit_list(repo_path: Path, limit: int = 100) -> List[str]:
         """Get list of commit hashes."""
         output = GitHelper.run_git_command(
-            ["rev-list", "--max-count", str(limit), "HEAD"],
-            cwd=repo_path
+            ["rev-list", "--max-count", str(limit), "HEAD"], cwd=repo_path
         )
         if output:
-            return [c for c in output.split('\n') if c]
+            return [c for c in output.split("\n") if c]
         return []
 
     @staticmethod
     def get_changed_files_in_commit(repo_path: Path, commit: str) -> List[str]:
         """Get list of files changed in a specific commit."""
         output = GitHelper.run_git_command(
-            ["diff-tree", "--no-commit-id", "--name-only", "-r", commit],
-            cwd=repo_path
+            ["diff-tree", "--no-commit-id", "--name-only", "-r", commit], cwd=repo_path
         )
         if output:
-            return [f for f in output.split('\n') if f]
+            return [f for f in output.split("\n") if f]
         return []
 
 
@@ -168,7 +170,9 @@ class FileHelper:
     """Helper class for file operations."""
 
     @staticmethod
-    def read_file_safely(filepath: Union[str, Path], max_size_mb: int = 10) -> Optional[str]:
+    def read_file_safely(
+        filepath: Union[str, Path], max_size_mb: int = 10
+    ) -> Optional[str]:
         """Read file content safely with size limit."""
         filepath = Path(filepath)
 
@@ -178,12 +182,14 @@ class FileHelper:
         # Check file size
         file_size_mb = filepath.stat().st_size / (1024 * 1024)
         if file_size_mb > max_size_mb:
-            ColorPrinter.print_info(f"Skipping large file: {filepath} ({file_size_mb:.1f}MB)")
+            ColorPrinter.print_info(
+                f"Skipping large file: {filepath} ({file_size_mb:.1f}MB)"
+            )
             return None
 
         try:
             # Try to read as text with different encodings
-            encodings = ['utf-8', 'latin-1', 'cp1252']
+            encodings = ["utf-8", "latin-1", "cp1252"]
             for encoding in encodings:
                 try:
                     return filepath.read_text(encoding=encoding)
@@ -205,9 +211,27 @@ class FileHelper:
 
         # Check common binary extensions
         binary_extensions = {
-            '.exe', '.dll', '.so', '.dylib', '.jpg', '.jpeg', '.png',
-            '.gif', '.pdf', '.zip', '.tar', '.gz', '.rar', '.7z',
-            '.mp3', '.mp4', '.avi', '.mov', '.bin', '.dat', '.db'
+            ".exe",
+            ".dll",
+            ".so",
+            ".dylib",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".pdf",
+            ".zip",
+            ".tar",
+            ".gz",
+            ".rar",
+            ".7z",
+            ".mp3",
+            ".mp4",
+            ".avi",
+            ".mov",
+            ".bin",
+            ".dat",
+            ".db",
         }
 
         if filepath.suffix.lower() in binary_extensions:
@@ -215,25 +239,26 @@ class FileHelper:
 
         # Check file content for binary data
         try:
-            with open(filepath, 'rb') as f:
+            with open(filepath, "rb") as f:
                 chunk = f.read(8192)  # Read first 8KB
                 # File is binary if it contains null bytes
-                return b'\x00' in chunk
+                return b"\x00" in chunk
         except Exception:
             return True
 
     @staticmethod
-    def export_findings_to_json(findings: List[Dict[str, any]], output_path: Union[str, Path]) -> bool:
+    def export_findings_to_json(
+        findings: List[Dict[str, Any]], output_path: Union[str, Path]
+    ) -> bool:
         """Export findings to JSON file."""
         try:
             output_path = Path(output_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump({
-                    'total_findings': len(findings),
-                    'findings': findings
-                }, f, indent=2)
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {"total_findings": len(findings), "findings": findings}, f, indent=2
+                )
 
             ColorPrinter.print_info(f"Findings exported to: {output_path}")
             return True
@@ -256,11 +281,11 @@ class IgnoreFileParser:
     def _load_ignore_file(self, filepath: Path) -> None:
         """Load patterns from ignore file."""
         try:
-            content = filepath.read_text(encoding='utf-8')
+            content = filepath.read_text(encoding="utf-8")
             for line in content.splitlines():
                 line = line.strip()
                 # Skip empty lines and comments
-                if line and not line.startswith('#'):
+                if line and not line.startswith("#"):
                     self.patterns.append(line)
                     # Convert glob pattern to regex
                     regex_pattern = self._glob_to_regex(line)
@@ -271,39 +296,39 @@ class IgnoreFileParser:
     def _glob_to_regex(self, pattern: str) -> str:
         """Convert glob pattern to regex."""
         # Escape special regex characters except glob wildcards
-        pattern = pattern.replace('\\', '\\\\')
-        pattern = pattern.replace('.', '\\.')
-        pattern = pattern.replace('+', '\\+')
-        pattern = pattern.replace('^', '\\^')
-        pattern = pattern.replace('$', '\\$')
-        pattern = pattern.replace('(', '\\(')
-        pattern = pattern.replace(')', '\\)')
-        pattern = pattern.replace('[', '\\[')
-        pattern = pattern.replace(']', '\\]')
-        pattern = pattern.replace('{', '\\{')
-        pattern = pattern.replace('}', '\\}')
+        pattern = pattern.replace("\\", "\\\\")
+        pattern = pattern.replace(".", "\\.")
+        pattern = pattern.replace("+", "\\+")
+        pattern = pattern.replace("^", "\\^")
+        pattern = pattern.replace("$", "\\$")
+        pattern = pattern.replace("(", "\\(")
+        pattern = pattern.replace(")", "\\)")
+        pattern = pattern.replace("[", "\\[")
+        pattern = pattern.replace("]", "\\]")
+        pattern = pattern.replace("{", "\\{")
+        pattern = pattern.replace("}", "\\}")
 
         # Convert glob wildcards to regex
-        pattern = pattern.replace('**/', '(?:.*/)?')  # Match any number of directories
-        pattern = pattern.replace('*', '[^/]*')  # Match any characters except /
-        pattern = pattern.replace('?', '[^/]')  # Match single character except /
+        pattern = pattern.replace("**/", "(?:.*/)?")  # Match any number of directories
+        pattern = pattern.replace("*", "[^/]*")  # Match any characters except /
+        pattern = pattern.replace("?", "[^/]")  # Match single character except /
 
         # Handle directory patterns (ending with /)
-        if pattern.endswith('/'):
-            pattern = pattern + '.*'
+        if pattern.endswith("/"):
+            pattern = pattern + ".*"
 
         # Anchor pattern
-        if pattern.startswith('/'):
-            pattern = '^' + pattern[1:]
+        if pattern.startswith("/"):
+            pattern = "^" + pattern[1:]
         else:
-            pattern = '(?:^|/)' + pattern
+            pattern = "(?:^|/)" + pattern
 
-        return pattern + '$'
+        return pattern + "$"
 
     def should_ignore(self, filepath: str) -> bool:
         """Check if file should be ignored based on patterns."""
         # Normalize path separators
-        filepath = filepath.replace('\\', '/')
+        filepath = filepath.replace("\\", "/")
 
         for regex_pattern in self.regex_patterns:
             if regex_pattern.search(filepath):
@@ -315,4 +340,5 @@ class IgnoreFileParser:
 def get_version() -> str:
     """Get the package version."""
     from . import __version__
+
     return __version__

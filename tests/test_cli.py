@@ -5,7 +5,6 @@ Tests for CLI functionality.
 import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-import sys
 import os
 
 import pytest
@@ -25,7 +24,7 @@ class TestCLI:
             # Initialize Git repo
             os.system(f'cd "{repo_path}" && git init')
             # Create .git directory if not created
-            git_dir = repo_path / '.git'
+            git_dir = repo_path / ".git"
             if not git_dir.exists():
                 git_dir.mkdir()
             yield repo_path
@@ -37,14 +36,14 @@ class TestCLI:
         # Test parsing various arguments
         # Skip --version as it causes SystemExit
 
-        args = parser.parse_args(['--pre-commit'])
+        args = parser.parse_args(["--pre-commit"])
         assert args.pre_commit is True
 
-        args = parser.parse_args(['--history-limit', '50'])
+        args = parser.parse_args(["--history-limit", "50"])
         assert args.history_limit == 50
 
-        args = parser.parse_args(['--min-severity', 'HIGH'])
-        assert args.min_severity == 'HIGH'
+        args = parser.parse_args(["--min-severity", "HIGH"])
+        assert args.min_severity == "HIGH"
 
     def test_parser_defaults(self):
         """Test parser default values."""
@@ -56,18 +55,22 @@ class TestCLI:
         assert args.no_history is False
         assert args.history_limit == 100
         assert args.quiet is False
-        assert args.min_severity == 'LOW'
-        assert args.ignore_file == '.gitscannerignore'
+        assert args.min_severity == "LOW"
+        assert args.ignore_file == ".gitscannerignore"
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_show_patterns(self, mock_scanner_class):
         """Test showing patterns."""
         # Mock scanner instance
         mock_scanner = MagicMock()
         mock_scanner.get_patterns.return_value = [
-            {'name': 'Pattern1', 'severity': 'HIGH', 'description': 'Test pattern 1'},
-            {'name': 'Pattern2', 'severity': 'CRITICAL', 'description': 'Test pattern 2'},
-            {'name': 'Pattern3', 'severity': 'LOW', 'description': 'Test pattern 3'},
+            {"name": "Pattern1", "severity": "HIGH", "description": "Test pattern 1"},
+            {
+                "name": "Pattern2",
+                "severity": "CRITICAL",
+                "description": "Test pattern 2",
+            },
+            {"name": "Pattern3", "severity": "LOW", "description": "Test pattern 3"},
         ]
 
         # Capture output
@@ -79,26 +82,26 @@ class TestCLI:
             show_patterns(mock_scanner)
 
         output = f.getvalue()
-        assert 'Pattern1' in output
-        assert 'Pattern2' in output
-        assert 'Pattern3' in output
-        assert 'HIGH' in output
-        assert 'CRITICAL' in output
-        assert 'LOW' in output
+        assert "Pattern1" in output
+        assert "Pattern2" in output
+        assert "Pattern3" in output
+        assert "HIGH" in output
+        assert "CRITICAL" in output
+        assert "LOW" in output
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_show_patterns(self, mock_scanner_class, temp_git_repo):
         """Test main function with --show-patterns."""
         mock_scanner = MagicMock()
         mock_scanner.get_patterns.return_value = []
         mock_scanner_class.return_value = mock_scanner
 
-        result = main(['--show-patterns', str(temp_git_repo)])
+        result = main(["--show-patterns", str(temp_git_repo)])
 
         assert result == 0
         mock_scanner.get_patterns.assert_called_once()
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_pre_commit_mode(self, mock_scanner_class, temp_git_repo):
         """Test main function in pre-commit mode."""
         mock_scanner = MagicMock()
@@ -107,12 +110,12 @@ class TestCLI:
         mock_scanner.scan_staged_files.return_value = mock_result
         mock_scanner_class.return_value = mock_scanner
 
-        result = main(['--pre-commit', str(temp_git_repo)])
+        result = main(["--pre-commit", str(temp_git_repo)])
 
         assert result == 0
         mock_scanner.scan_staged_files.assert_called_once()
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_full_scan(self, mock_scanner_class, temp_git_repo):
         """Test main function with full scan."""
         mock_scanner = MagicMock()
@@ -125,11 +128,10 @@ class TestCLI:
 
         assert result == 0
         mock_scanner.scan_full.assert_called_once_with(
-            include_history=True,
-            history_limit=100
+            include_history=True, history_limit=100
         )
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_no_history(self, mock_scanner_class, temp_git_repo):
         """Test main function with --no-history."""
         mock_scanner = MagicMock()
@@ -137,30 +139,31 @@ class TestCLI:
         mock_scanner.scan_full.return_value = mock_result
         mock_scanner_class.return_value = mock_scanner
 
-        result = main(['--no-history', str(temp_git_repo)])
+        result = main(["--no-history", str(temp_git_repo)])
 
         assert result == 0
         mock_scanner.scan_full.assert_called_once_with(
-            include_history=False,
-            history_limit=100
+            include_history=False, history_limit=100
         )
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_with_findings(self, mock_scanner_class, temp_git_repo):
         """Test main function when secrets are found."""
         mock_scanner = MagicMock()
         mock_result = MagicMock(spec=ScanResult)
         mock_result.scanned_files = 5
         mock_result.skipped_files = 0
-        mock_result.findings = [{
-            'type': 'AWS Access Key',
-            'severity': 'CRITICAL',
-            'file': 'config.py',
-            'line': 10,
-            'secret': 'AKIA...',
-            'description': 'AWS Access Key found',
-            'content': 'aws_key = "AKIA..."'
-        }]
+        mock_result.findings = [
+            {
+                "type": "AWS Access Key",
+                "severity": "CRITICAL",
+                "file": "config.py",
+                "line": 10,
+                "secret": "AKIA...",
+                "description": "AWS Access Key found",
+                "content": 'aws_key = "AKIA..."',
+            }
+        ]
         mock_result.errors = []
         mock_result.get_unique_findings.return_value = mock_result.findings
         mock_result.filter_by_severity.return_value = mock_result.findings
@@ -172,7 +175,7 @@ class TestCLI:
 
         assert result == 1  # Should return 1 when findings exist
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_with_export(self, mock_scanner_class, temp_git_repo):
         """Test main function with export option."""
         mock_scanner = MagicMock()
@@ -188,13 +191,15 @@ class TestCLI:
 
         export_file = temp_git_repo / "findings.json"
 
-        with patch('security_scanner.utils.FileHelper.export_findings_to_json') as mock_export:
-            result = main(['--export', str(export_file), str(temp_git_repo)])
+        with patch(
+            "security_scanner.utils.FileHelper.export_findings_to_json"
+        ) as mock_export:
+            result = main(["--export", str(export_file), str(temp_git_repo)])
 
             assert result == 0
             mock_export.assert_called_once()
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_quiet_mode(self, mock_scanner_class, temp_git_repo):
         """Test main function in quiet mode."""
         mock_scanner = MagicMock()
@@ -214,14 +219,14 @@ class TestCLI:
 
         f = io.StringIO()
         with redirect_stdout(f):
-            result = main(['--quiet', str(temp_git_repo)])
+            result = main(["--quiet", str(temp_git_repo)])
 
         output = f.getvalue()
         assert result == 0
         # In quiet mode, should have minimal output
-        assert len(output.strip()) == 0 or 'All clear' not in output
+        assert len(output.strip()) == 0 or "All clear" not in output
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_min_severity_filter(self, mock_scanner_class, temp_git_repo):
         """Test main function with minimum severity filter."""
         mock_scanner = MagicMock()
@@ -231,27 +236,55 @@ class TestCLI:
 
         # Add findings of different severities
         findings = [
-            {'type': 'Test1', 'severity': 'LOW', 'description': 'Low severity finding', 'file': 'test1.py', 'line': 1,
-             'secret': 'secret1', 'content': 'content1'},
-            {'type': 'Test2', 'severity': 'MEDIUM', 'description': 'Medium severity finding', 'file': 'test2.py',
-             'line': 2, 'secret': 'secret2', 'content': 'content2'},
-            {'type': 'Test3', 'severity': 'HIGH', 'description': 'High severity finding', 'file': 'test3.py', 'line': 3,
-             'secret': 'secret3', 'content': 'content3'},
-            {'type': 'Test4', 'severity': 'CRITICAL', 'description': 'Critical severity finding', 'file': 'test4.py',
-             'line': 4, 'secret': 'secret4', 'content': 'content4'},
+            {
+                "type": "Test1",
+                "severity": "LOW",
+                "description": "Low severity finding",
+                "file": "test1.py",
+                "line": 1,
+                "secret": "secret1",
+                "content": "content1",
+            },
+            {
+                "type": "Test2",
+                "severity": "MEDIUM",
+                "description": "Medium severity finding",
+                "file": "test2.py",
+                "line": 2,
+                "secret": "secret2",
+                "content": "content2",
+            },
+            {
+                "type": "Test3",
+                "severity": "HIGH",
+                "description": "High severity finding",
+                "file": "test3.py",
+                "line": 3,
+                "secret": "secret3",
+                "content": "content3",
+            },
+            {
+                "type": "Test4",
+                "severity": "CRITICAL",
+                "description": "Critical severity finding",
+                "file": "test4.py",
+                "line": 4,
+                "secret": "secret4",
+                "content": "content4",
+            },
         ]
         mock_result.findings = findings
         mock_result.errors = []
 
         mock_result.get_unique_findings.return_value = findings
         mock_result.filter_by_severity.return_value = [
-            f for f in findings if f['severity'] in ['HIGH', 'CRITICAL']
+            f for f in findings if f["severity"] in ["HIGH", "CRITICAL"]
         ]
 
         mock_scanner.scan_full.return_value = mock_result
         mock_scanner_class.return_value = mock_scanner
 
-        result = main(['--min-severity', 'HIGH', str(temp_git_repo)])
+        result = main(["--min-severity", "HIGH", str(temp_git_repo)])
 
         assert result == 1  # Has findings
         mock_result.filter_by_severity.assert_called_once()
@@ -262,7 +295,7 @@ class TestCLI:
             result = main([tmpdir])
             assert result == 2  # Should return error code
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_keyboard_interrupt(self, mock_scanner_class, temp_git_repo):
         """Test handling KeyboardInterrupt."""
         mock_scanner_class.side_effect = KeyboardInterrupt()
@@ -270,7 +303,7 @@ class TestCLI:
         result = main([str(temp_git_repo)])
         assert result == 2
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_unexpected_error(self, mock_scanner_class, temp_git_repo):
         """Test handling unexpected errors."""
         mock_scanner_class.side_effect = Exception("Unexpected error")
@@ -280,7 +313,7 @@ class TestCLI:
 
     def test_main_no_color(self, temp_git_repo):
         """Test --no-color option."""
-        with patch('security_scanner.cli.SecurityScanner') as mock_scanner_class:
+        with patch("security_scanner.cli.SecurityScanner") as mock_scanner_class:
             mock_scanner = MagicMock()
             mock_result = MagicMock(spec=ScanResult)
             mock_result.scanned_files = 3
@@ -293,30 +326,32 @@ class TestCLI:
             mock_scanner_class.return_value = mock_scanner
 
             # Clear env var first
-            if 'NO_COLOR' in os.environ:
-                del os.environ['NO_COLOR']
+            if "NO_COLOR" in os.environ:
+                del os.environ["NO_COLOR"]
 
-            result = main(['--no-color', str(temp_git_repo)])
+            result = main(["--no-color", str(temp_git_repo)])
 
             assert result == 0
-            assert os.environ.get('NO_COLOR') == '1'
+            assert os.environ.get("NO_COLOR") == "1"
 
-    @patch('security_scanner.cli.SecurityScanner')
+    @patch("security_scanner.cli.SecurityScanner")
     def test_main_pre_commit_with_findings(self, mock_scanner_class, temp_git_repo):
         """Test pre-commit mode with findings (should fail)."""
         mock_scanner = MagicMock()
         mock_result = MagicMock(spec=ScanResult)
         mock_result.scanned_files = 1
         mock_result.skipped_files = 0
-        mock_result.findings = [{
-            'type': 'Secret',
-            'severity': 'HIGH',
-            'file': 'test.py',
-            'line': 1,
-            'secret': 'secret',
-            'description': 'Found secret',
-            'content': 'secret = "value"'
-        }]
+        mock_result.findings = [
+            {
+                "type": "Secret",
+                "severity": "HIGH",
+                "file": "test.py",
+                "line": 1,
+                "secret": "secret",
+                "description": "Found secret",
+                "content": 'secret = "value"',
+            }
+        ]
         mock_result.errors = []
         mock_result.get_unique_findings.return_value = mock_result.findings
         mock_result.filter_by_severity.return_value = mock_result.findings
@@ -330,8 +365,8 @@ class TestCLI:
 
         f = io.StringIO()
         with redirect_stdout(f):
-            result = main(['--pre-commit', str(temp_git_repo)])
+            result = main(["--pre-commit", str(temp_git_repo)])
 
         output = f.getvalue()
         assert result == 1
-        assert 'Pre-commit check failed' in output
+        assert "Pre-commit check failed" in output

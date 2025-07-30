@@ -2,8 +2,7 @@
 Tests for pattern matching functionality.
 """
 
-import pytest
-from security_scanner.patterns import PatternMatcher, Severity, PatternDefinition
+from security_scanner.patterns import PatternMatcher, Severity
 
 
 class TestPatternMatcher:
@@ -15,10 +14,10 @@ class TestPatternMatcher:
         patterns = matcher.get_patterns()
 
         assert len(patterns) > 0
-        assert all('name' in p for p in patterns)
-        assert all('pattern' in p for p in patterns)
-        assert all('severity' in p for p in patterns)
-        assert all('description' in p for p in patterns)
+        assert all("name" in p for p in patterns)
+        assert all("pattern" in p for p in patterns)
+        assert all("severity" in p for p in patterns)
+        assert all("description" in p for p in patterns)
 
     def test_find_aws_access_key(self):
         """Test detection of AWS access keys."""
@@ -31,21 +30,23 @@ class TestPatternMatcher:
         findings = matcher.find_secrets(content, "test.py")
 
         assert len(findings) >= 1
-        aws_finding = next(f for f in findings if f['type'] == 'AWS Access Key')
-        assert aws_finding['severity'] == 'CRITICAL'
-        assert 'AKIA' in aws_finding['secret']
+        aws_finding = next(f for f in findings if f["type"] == "AWS Access Key")
+        assert aws_finding["severity"] == "CRITICAL"
+        assert "AKIA" in aws_finding["secret"]
 
     def test_find_openai_api_key(self):
         """Test detection of OpenAI API keys."""
         matcher = PatternMatcher()
-        content = 'openai_api_key = "sk-proj123456789012345678901234567890123456789012345678"'
+        content = (
+            'openai_api_key = "sk-proj123456789012345678901234567890123456789012345678"'
+        )
 
         findings = matcher.find_secrets(content, "config.py")
 
         assert len(findings) >= 1
-        openai_finding = next(f for f in findings if f['type'] == 'OpenAI API Key')
-        assert openai_finding['severity'] == 'HIGH'
-        assert openai_finding['line'] == 1
+        openai_finding = next(f for f in findings if f["type"] == "OpenAI API Key")
+        assert openai_finding["severity"] == "HIGH"
+        assert openai_finding["line"] == 1
 
     def test_find_github_token(self):
         """Test detection of GitHub tokens."""
@@ -58,9 +59,9 @@ class TestPatternMatcher:
 
         findings = matcher.find_secrets(content, ".env")
 
-        github_findings = [f for f in findings if 'GitHub' in f['type']]
+        github_findings = [f for f in findings if "GitHub" in f["type"]]
         assert len(github_findings) == 2
-        assert all(f['severity'] == 'HIGH' for f in github_findings)
+        assert all(f["severity"] == "HIGH" for f in github_findings)
 
     def test_find_mongodb_connection(self):
         """Test detection of MongoDB connection strings."""
@@ -69,9 +70,9 @@ class TestPatternMatcher:
 
         findings = matcher.find_secrets(content, "config.py")
 
-        mongo_finding = next(f for f in findings if f['type'] == 'MongoDB Connection')
-        assert mongo_finding['severity'] == 'CRITICAL'
-        assert 'mongodb://' in mongo_finding['content']
+        mongo_finding = next(f for f in findings if f["type"] == "MongoDB Connection")
+        assert mongo_finding["severity"] == "CRITICAL"
+        assert "mongodb://" in mongo_finding["content"]
 
     def test_find_private_key(self):
         """Test detection of private keys."""
@@ -84,9 +85,9 @@ class TestPatternMatcher:
 
         findings = matcher.find_secrets(content, "private.key")
 
-        key_finding = next(f for f in findings if f['type'] == 'Private Key')
-        assert key_finding['severity'] == 'CRITICAL'
-        assert key_finding['line'] == 2
+        key_finding = next(f for f in findings if f["type"] == "Private Key")
+        assert key_finding["severity"] == "CRITICAL"
+        assert key_finding["line"] == 2
 
     def test_line_number_tracking(self):
         """Test that line numbers are correctly tracked."""
@@ -101,10 +102,10 @@ password = "super_secret_password_123"
         findings = matcher.find_secrets(content, "test.txt")
 
         # Sort by line number
-        findings_by_line = sorted(findings, key=lambda f: f['line'])
+        findings_by_line = sorted(findings, key=lambda f: f["line"])
 
-        assert findings_by_line[0]['line'] == 3
-        assert findings_by_line[-1]['line'] == 5
+        assert findings_by_line[0]["line"] == 3
+        assert findings_by_line[-1]["line"] == 5
 
     def test_secret_truncation(self):
         """Test that long secrets are truncated for security."""
@@ -116,8 +117,8 @@ password = "super_secret_password_123"
 
         assert len(findings) > 0
         finding = findings[0]
-        assert len(finding['secret']) < len(long_secret)
-        assert '...' in finding['secret']
+        assert len(finding["secret"]) < len(long_secret)
+        assert "..." in finding["secret"]
 
     def test_should_scan_file(self):
         """Test file exclusion logic."""
@@ -148,9 +149,9 @@ password = "super_secret_password_123"
         findings = matcher.find_secrets(content, ".bashrc")
 
         # Should not flag PATH, HOME, USER
-        env_findings = [f for f in findings if f['type'] == 'Environment Variable']
+        env_findings = [f for f in findings if f["type"] == "Environment Variable"]
         assert len(env_findings) == 1
-        assert 'MY_SECRET_KEY' in env_findings[0]['content']
+        assert "MY_SECRET_KEY" in env_findings[0]["content"]
 
     def test_add_custom_pattern(self):
         """Test adding custom patterns."""
@@ -159,9 +160,9 @@ password = "super_secret_password_123"
 
         matcher.add_custom_pattern(
             name="Custom API Key",
-            pattern=r'custom_key_[a-f0-9]{32}',
+            pattern=r"custom_key_[a-f0-9]{32}",
             severity=Severity.HIGH,
-            description="Custom API key pattern"
+            description="Custom API key pattern",
         )
 
         assert len(matcher.get_patterns()) == initial_count + 1
@@ -170,8 +171,8 @@ password = "super_secret_password_123"
         content = 'key = "custom_key_1234567890abcdef1234567890abcdef"'
         findings = matcher.find_secrets(content, "test.py")
 
-        custom_finding = next(f for f in findings if f['type'] == 'Custom API Key')
-        assert custom_finding['severity'] == 'HIGH'
+        custom_finding = next(f for f in findings if f["type"] == "Custom API Key")
+        assert custom_finding["severity"] == "HIGH"
 
     def test_remove_pattern(self):
         """Test removing patterns."""
@@ -180,9 +181,9 @@ password = "super_secret_password_123"
         # Add a custom pattern
         matcher.add_custom_pattern(
             name="Test Pattern",
-            pattern=r'test_[0-9]+',
+            pattern=r"test_[0-9]+",
             severity=Severity.LOW,
-            description="Test pattern"
+            description="Test pattern",
         )
 
         initial_count = len(matcher.get_patterns())
@@ -199,12 +200,15 @@ password = "super_secret_password_123"
     def test_multiple_findings_same_line(self):
         """Test multiple secrets on the same line."""
         matcher = PatternMatcher()
-        content = 'keys = {"aws": "AKIAIOSFODNN7EXAMPLE", "github": "ghp_1234567890abcdef1234567890abcdef1234"}'
+        content = (
+            'keys = {"aws": "AKIAIOSFODNN7EXAMPLE", '
+            '"github": "ghp_1234567890abcdef1234567890abcdef1234"}'
+        )
 
         findings = matcher.find_secrets(content, "config.json")
 
         assert len(findings) >= 2
-        line_numbers = [f['line'] for f in findings]
+        line_numbers = [f["line"] for f in findings]
         assert all(line == 1 for line in line_numbers)
 
 
@@ -227,7 +231,7 @@ class TestSeverityEnum:
             Severity.LOW: 0,
             Severity.MEDIUM: 1,
             Severity.HIGH: 2,
-            Severity.CRITICAL: 3
+            Severity.CRITICAL: 3,
         }
 
         sorted_severities = sorted(severities, key=lambda s: severity_order[s])

@@ -3,9 +3,8 @@ Command-line interface for the security scanner.
 """
 
 import argparse
-import sys
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from . import __version__
 from .scanner import SecurityScanner
@@ -16,8 +15,8 @@ from .utils import ColorPrinter, FileHelper
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure argument parser."""
     parser = argparse.ArgumentParser(
-        prog='git-security-scanner',
-        description='Detect API keys, passwords, and secrets in your Git repositories',
+        prog="git-security-scanner",
+        description="Detect API keys, passwords, and secrets in your Git repositories",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -38,82 +37,71 @@ Examples:
 
   # Quiet mode (only show critical issues)
   git-security-scanner --quiet --min-severity CRITICAL
-        """
+        """,
     )
 
     # Positional arguments
     parser.add_argument(
-        'path',
-        nargs='?',
+        "path",
+        nargs="?",
         type=Path,
         default=Path.cwd(),
-        help='Path to Git repository (default: current directory)'
+        help="Path to Git repository (default: current directory)",
     )
 
     # Optional arguments
     parser.add_argument(
-        '-v', '--version',
-        action='version',
-        version=f'%(prog)s {__version__}'
+        "-v", "--version", action="version", version=f"%(prog)s {__version__}"
     )
 
     parser.add_argument(
-        '--pre-commit',
-        action='store_true',
-        help='Scan only staged files (for pre-commit hook)'
+        "--pre-commit",
+        action="store_true",
+        help="Scan only staged files (for pre-commit hook)",
     )
 
     parser.add_argument(
-        '--no-history',
-        action='store_true',
-        help='Skip commit history scan'
+        "--no-history", action="store_true", help="Skip commit history scan"
     )
 
     parser.add_argument(
-        '--history-limit',
+        "--history-limit",
         type=int,
         default=100,
-        metavar='N',
-        help='Limit commit history scan to N commits (default: 100)'
+        metavar="N",
+        help="Limit commit history scan to N commits (default: 100)",
     )
 
     parser.add_argument(
-        '--export',
-        type=Path,
-        metavar='FILE',
-        help='Export findings to JSON file'
+        "--export", type=Path, metavar="FILE", help="Export findings to JSON file"
     )
 
     parser.add_argument(
-        '--quiet',
-        action='store_true',
-        help='Quiet mode - minimal output'
+        "--quiet", action="store_true", help="Quiet mode - minimal output"
     )
 
     parser.add_argument(
-        '--min-severity',
-        choices=['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
-        default='LOW',
-        help='Minimum severity level to report (default: LOW)'
+        "--min-severity",
+        choices=["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+        default="LOW",
+        help="Minimum severity level to report (default: LOW)",
     )
 
     parser.add_argument(
-        '--ignore-file',
+        "--ignore-file",
         type=str,
-        default='.gitscannerignore',
-        help='Path to ignore file (default: .gitscannerignore)'
+        default=".gitscannerignore",
+        help="Path to ignore file (default: .gitscannerignore)",
     )
 
     parser.add_argument(
-        '--show-patterns',
-        action='store_true',
-        help='Show all detection patterns and exit'
+        "--show-patterns",
+        action="store_true",
+        help="Show all detection patterns and exit",
     )
 
     parser.add_argument(
-        '--no-color',
-        action='store_true',
-        help='Disable colored output'
+        "--no-color", action="store_true", help="Disable colored output"
     )
 
     return parser
@@ -126,15 +114,15 @@ def show_patterns(scanner: SecurityScanner) -> None:
     print(f"\nActive detection patterns ({len(patterns)} total):\n")
 
     # Group by severity
-    by_severity = {}
+    by_severity: Dict[str, List[Dict[str, str]]] = {}
     for pattern in patterns:
-        severity = pattern['severity']
+        severity = pattern["severity"]
         if severity not in by_severity:
             by_severity[severity] = []
         by_severity[severity].append(pattern)
 
     # Display by severity
-    for severity in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']:
+    for severity in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
         if severity in by_severity:
             ColorPrinter.print_info(f"\n{severity} Severity:")
             for pattern in by_severity[severity]:
@@ -157,13 +145,13 @@ def main(args: Optional[List[str]] = None) -> int:
     # Disable color if requested
     if parsed_args.no_color:
         import os
-        os.environ['NO_COLOR'] = '1'
+
+        os.environ["NO_COLOR"] = "1"
 
     try:
         # Initialize scanner
         scanner = SecurityScanner(
-            repo_path=parsed_args.path,
-            ignore_file=parsed_args.ignore_file
+            repo_path=parsed_args.path, ignore_file=parsed_args.ignore_file
         )
 
         # Show patterns if requested
@@ -180,12 +168,8 @@ def main(args: Optional[List[str]] = None) -> int:
             # Full scan mode
             include_history = not parsed_args.no_history
             result = scanner.scan_full(
-                include_history=include_history,
-                history_limit=parsed_args.history_limit
+                include_history=include_history, history_limit=parsed_args.history_limit
             )
-
-        # Get unique findings
-        all_findings = result.get_unique_findings()
 
         # Filter by severity
         min_severity = Severity[parsed_args.min_severity]
@@ -203,7 +187,9 @@ def main(args: Optional[List[str]] = None) -> int:
             for error in result.errors[:5]:  # Show first 5 errors
                 ColorPrinter.print_error(f"  - {error}")
             if len(result.errors) > 5:
-                ColorPrinter.print_error(f"  ... and {len(result.errors) - 5} more")
+                ColorPrinter.print_error(
+                    f"  ... and {len(result.errors) - 5} more"
+                )
 
         # Display findings
         for finding in filtered_findings:
@@ -241,12 +227,15 @@ def main(args: Optional[List[str]] = None) -> int:
         ColorPrinter.print_error(f"Unexpected error: {str(e)}")
         if not parsed_args.quiet:
             import traceback
+
             traceback.print_exc()
         return 2
 
 
 def run_cli() -> None:
     """Run the CLI and exit with appropriate code."""
+    import sys
+
     sys.exit(main())
 
 

@@ -4,7 +4,7 @@ Core scanner module for detecting secrets in Git repositories.
 
 import os
 from pathlib import Path
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional, Set, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 
@@ -15,14 +15,14 @@ from .utils import GitHelper, FileHelper, ColorPrinter, IgnoreFileParser
 class ScanResult:
     """Container for scan results."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty scan result."""
-        self.findings: List[Dict[str, any]] = []
+        self.findings: List[Dict[str, Any]] = []
         self.scanned_files: int = 0
         self.skipped_files: int = 0
         self.errors: List[str] = []
 
-    def add_finding(self, finding: Dict[str, any]) -> None:
+    def add_finding(self, finding: Dict[str, Any]) -> None:
         """Add a finding to results."""
         self.findings.append(finding)
 
@@ -30,30 +30,31 @@ class ScanResult:
         """Add an error message."""
         self.errors.append(error)
 
-    def merge(self, other: 'ScanResult') -> None:
+    def merge(self, other: "ScanResult") -> None:
         """Merge another scan result into this one."""
         self.findings.extend(other.findings)
         self.scanned_files += other.scanned_files
         self.skipped_files += other.skipped_files
         self.errors.extend(other.errors)
 
-    def filter_by_severity(self, min_severity: Severity) -> List[Dict[str, any]]:
+    def filter_by_severity(self, min_severity: Severity) -> List[Dict[str, Any]]:
         """Filter findings by minimum severity level."""
         severity_order = {
             Severity.LOW: 0,
             Severity.MEDIUM: 1,
             Severity.HIGH: 2,
-            Severity.CRITICAL: 3
+            Severity.CRITICAL: 3,
         }
 
         min_level = severity_order[min_severity]
 
         return [
-            f for f in self.findings
-            if severity_order[Severity[f['severity']]] >= min_level
+            f
+            for f in self.findings
+            if severity_order[Severity[f["severity"]]] >= min_level
         ]
 
-    def get_unique_findings(self) -> List[Dict[str, any]]:
+    def get_unique_findings(self) -> List[Dict[str, Any]]:
         """Get unique findings (remove duplicates)."""
         seen = set()
         unique_findings = []
@@ -61,10 +62,10 @@ class ScanResult:
         for finding in self.findings:
             # Create a unique key for each finding
             key = (
-                finding['type'],
-                finding['file'],
-                finding['line'],
-                finding['secret']
+                finding["type"],
+                finding["file"],
+                finding["line"],
+                finding["secret"],
             )
 
             if key not in seen:
@@ -77,9 +78,12 @@ class ScanResult:
 class SecurityScanner:
     """Main scanner class for detecting secrets in repositories."""
 
-    def __init__(self, repo_path: Optional[Path] = None,
-                 pattern_matcher: Optional[PatternMatcher] = None,
-                 ignore_file: Optional[str] = ".gitscannerignore"):
+    def __init__(
+        self,
+        repo_path: Optional[Path] = None,
+        pattern_matcher: Optional[PatternMatcher] = None,
+        ignore_file: Optional[str] = ".gitscannerignore",
+    ):
         """
         Initialize the security scanner.
 
@@ -173,7 +177,9 @@ class SecurityScanner:
             ColorPrinter.print_info("No files to scan")
             return result
 
-        ColorPrinter.print_info(f"Scanning {len(all_files)} files in working directory...")
+        ColorPrinter.print_info(
+            f"Scanning {len(all_files)} files in working directory..."
+        )
 
         # Use thread pool for parallel scanning
         with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
@@ -218,7 +224,9 @@ class SecurityScanner:
 
         for i, commit in enumerate(commits):
             # Get changed files in this commit
-            changed_files = GitHelper.get_changed_files_in_commit(self.repo_path, commit)
+            changed_files = GitHelper.get_changed_files_in_commit(
+                self.repo_path, commit
+            )
 
             for filepath in changed_files:
                 # Create unique key for this file version
@@ -239,7 +247,7 @@ class SecurityScanner:
 
                     # Add commit info to findings
                     for finding in file_result.findings:
-                        finding['commit'] = commit[:8]
+                        finding["commit"] = commit[:8]
 
                     result.merge(file_result)
 
@@ -249,7 +257,9 @@ class SecurityScanner:
 
         return result
 
-    def scan_full(self, include_history: bool = True, history_limit: int = 100) -> ScanResult:
+    def scan_full(
+        self, include_history: bool = True, history_limit: int = 100
+    ) -> ScanResult:
         """
         Perform a full scan of the repository.
 
@@ -286,8 +296,9 @@ class SecurityScanner:
         self._get_cached_file_content.cache_clear()
         self._file_cache.clear()
 
-    def add_custom_pattern(self, name: str, pattern: str,
-                           severity: str = "MEDIUM", description: str = "") -> None:
+    def add_custom_pattern(
+        self, name: str, pattern: str, severity: str = "MEDIUM", description: str = ""
+    ) -> None:
         """
         Add a custom pattern to the scanner.
 
@@ -302,7 +313,7 @@ class SecurityScanner:
             name=name,
             pattern=pattern,
             severity=severity_enum,
-            description=description or f"Custom pattern: {name}"
+            description=description or f"Custom pattern: {name}",
         )
 
     def remove_pattern(self, name: str) -> bool:

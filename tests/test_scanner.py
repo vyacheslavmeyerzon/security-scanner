@@ -5,12 +5,12 @@ Tests for the main scanner functionality.
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 from security_scanner.scanner import SecurityScanner, ScanResult
-from security_scanner.patterns import PatternMatcher, Severity
+from security_scanner.patterns import Severity
 
 
 class TestScanResult:
@@ -29,10 +29,10 @@ class TestScanResult:
         """Test adding findings to result."""
         result = ScanResult()
         finding = {
-            'type': 'AWS Access Key',
-            'severity': 'CRITICAL',
-            'file': 'config.py',
-            'line': 10
+            "type": "AWS Access Key",
+            "severity": "CRITICAL",
+            "file": "config.py",
+            "line": 10,
         }
 
         result.add_finding(finding)
@@ -53,16 +53,16 @@ class TestScanResult:
     def test_merge_results(self):
         """Test merging two scan results."""
         result1 = ScanResult()
-        result1.add_finding({'type': 'Finding1'})
+        result1.add_finding({"type": "Finding1"})
         result1.scanned_files = 5
         result1.skipped_files = 2
-        result1.add_error('Error1')
+        result1.add_error("Error1")
 
         result2 = ScanResult()
-        result2.add_finding({'type': 'Finding2'})
+        result2.add_finding({"type": "Finding2"})
         result2.scanned_files = 3
         result2.skipped_files = 1
-        result2.add_error('Error2')
+        result2.add_error("Error2")
 
         result1.merge(result2)
 
@@ -74,20 +74,20 @@ class TestScanResult:
     def test_filter_by_severity(self):
         """Test filtering findings by severity."""
         result = ScanResult()
-        result.add_finding({'type': 'Test1', 'severity': 'LOW'})
-        result.add_finding({'type': 'Test2', 'severity': 'MEDIUM'})
-        result.add_finding({'type': 'Test3', 'severity': 'HIGH'})
-        result.add_finding({'type': 'Test4', 'severity': 'CRITICAL'})
+        result.add_finding({"type": "Test1", "severity": "LOW"})
+        result.add_finding({"type": "Test2", "severity": "MEDIUM"})
+        result.add_finding({"type": "Test3", "severity": "HIGH"})
+        result.add_finding({"type": "Test4", "severity": "CRITICAL"})
 
         # Filter by HIGH
         high_findings = result.filter_by_severity(Severity.HIGH)
         assert len(high_findings) == 2
-        assert all(f['severity'] in ['HIGH', 'CRITICAL'] for f in high_findings)
+        assert all(f["severity"] in ["HIGH", "CRITICAL"] for f in high_findings)
 
         # Filter by CRITICAL
         critical_findings = result.filter_by_severity(Severity.CRITICAL)
         assert len(critical_findings) == 1
-        assert critical_findings[0]['severity'] == 'CRITICAL'
+        assert critical_findings[0]["severity"] == "CRITICAL"
 
     def test_get_unique_findings(self):
         """Test getting unique findings (removing duplicates)."""
@@ -95,16 +95,16 @@ class TestScanResult:
 
         # Add duplicate findings
         finding = {
-            'type': 'AWS Access Key',
-            'severity': 'CRITICAL',
-            'file': 'config.py',
-            'line': 10,
-            'secret': 'AKIA...'
+            "type": "AWS Access Key",
+            "severity": "CRITICAL",
+            "file": "config.py",
+            "line": 10,
+            "secret": "AKIA...",
         }
 
         result.add_finding(finding)
         result.add_finding(finding)  # Duplicate
-        result.add_finding({**finding, 'line': 20})  # Different line
+        result.add_finding({**finding, "line": 20})  # Different line
 
         unique = result.get_unique_findings()
         assert len(unique) == 2
@@ -123,7 +123,7 @@ class TestSecurityScanner:
             os.system(f'cd "{repo_path}" && git init')
 
             # Create .git directory if not created
-            git_dir = repo_path / '.git'
+            git_dir = repo_path / ".git"
             if not git_dir.exists():
                 git_dir.mkdir()
 
@@ -149,16 +149,18 @@ class TestSecurityScanner:
 
         # Create a file with secrets
         test_file = temp_git_repo / "config.py"
-        test_file.write_text("""
+        test_file.write_text(
+            """
 aws_access_key = "AKIAIOSFODNN7EXAMPLE"
 api_key = "sk-1234567890123456789012345678901234567890123456789012"
-        """)
+        """
+        )
 
         result = scanner.scan_file("config.py")
 
         assert result.scanned_files == 1
         assert len(result.findings) >= 2
-        assert any(f['type'] == 'AWS Access Key' for f in result.findings)
+        assert any(f["type"] == "AWS Access Key" for f in result.findings)
 
     def test_scan_file_ignored(self, temp_git_repo):
         """Test scanning an ignored file."""
@@ -184,14 +186,14 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
 
         # Create a binary file
         binary_file = temp_git_repo / "image.jpg"
-        binary_file.write_bytes(b'\x00\x01\x02\x03')
+        binary_file.write_bytes(b"\x00\x01\x02\x03")
 
         result = scanner.scan_file("image.jpg")
 
         assert result.skipped_files == 1
         assert result.scanned_files == 0
 
-    @patch('security_scanner.scanner.GitHelper.get_staged_files')
+    @patch("security_scanner.scanner.GitHelper.get_staged_files")
     def test_scan_staged_files(self, mock_get_staged, temp_git_repo):
         """Test scanning staged files."""
         scanner = SecurityScanner(repo_path=temp_git_repo)
@@ -207,9 +209,9 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
 
         assert result.scanned_files == 1
         assert len(result.findings) >= 1
-        assert any(f['type'] == 'GitHub Token' for f in result.findings)
+        assert any(f["type"] == "GitHub Token" for f in result.findings)
 
-    @patch('security_scanner.scanner.GitHelper.get_staged_files')
+    @patch("security_scanner.scanner.GitHelper.get_staged_files")
     def test_scan_staged_files_empty(self, mock_get_staged, temp_git_repo):
         """Test scanning when no files are staged."""
         scanner = SecurityScanner(repo_path=temp_git_repo)
@@ -222,7 +224,7 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
         assert result.scanned_files == 0
         assert len(result.findings) == 0
 
-    @patch('security_scanner.scanner.GitHelper.get_all_files')
+    @patch("security_scanner.scanner.GitHelper.get_all_files")
     def test_scan_working_directory(self, mock_get_files, temp_git_repo):
         """Test scanning working directory."""
         scanner = SecurityScanner(repo_path=temp_git_repo)
@@ -241,13 +243,14 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
 
         assert result.scanned_files == 2
         assert len(result.findings) >= 1
-        assert any(f['type'] == 'GitHub Token' for f in result.findings)
+        assert any(f["type"] == "GitHub Token" for f in result.findings)
 
-    @patch('security_scanner.scanner.GitHelper.get_commit_list')
-    @patch('security_scanner.scanner.GitHelper.get_changed_files_in_commit')
-    @patch('security_scanner.scanner.GitHelper.get_file_content_from_commit')
-    def test_scan_commit_history(self, mock_get_content, mock_get_changed,
-                                 mock_get_commits, temp_git_repo):
+    @patch("security_scanner.scanner.GitHelper.get_commit_list")
+    @patch("security_scanner.scanner.GitHelper.get_changed_files_in_commit")
+    @patch("security_scanner.scanner.GitHelper.get_file_content_from_commit")
+    def test_scan_commit_history(
+        self, mock_get_content, mock_get_changed, mock_get_commits, temp_git_repo
+    ):
         """Test scanning commit history."""
         scanner = SecurityScanner(repo_path=temp_git_repo)
 
@@ -258,20 +261,22 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
         mock_get_changed.return_value = ["secret.py"]
 
         # Mock file content with secret
-        mock_get_content.return_value = 'mongodb_uri = "mongodb://user:pass@localhost/db"'
+        mock_get_content.return_value = (
+            'mongodb_uri = "mongodb://user:pass@localhost/db"'
+        )
 
         result = scanner.scan_commit_history(limit=10)
 
         assert len(result.findings) >= 1
-        assert any(f['type'] == 'MongoDB Connection' for f in result.findings)
-        assert all('commit' in f for f in result.findings)
+        assert any(f["type"] == "MongoDB Connection" for f in result.findings)
+        assert all("commit" in f for f in result.findings)
 
     def test_scan_full(self, temp_git_repo):
         """Test full repository scan."""
         scanner = SecurityScanner(repo_path=temp_git_repo)
 
-        with patch.object(scanner, 'scan_working_directory') as mock_wd:
-            with patch.object(scanner, 'scan_commit_history') as mock_history:
+        with patch.object(scanner, "scan_working_directory") as mock_wd:
+            with patch.object(scanner, "scan_commit_history") as mock_history:
                 wd_result = ScanResult()
                 wd_result.scanned_files = 5
                 mock_wd.return_value = wd_result
@@ -290,8 +295,8 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
         """Test full scan without history."""
         scanner = SecurityScanner(repo_path=temp_git_repo)
 
-        with patch.object(scanner, 'scan_working_directory') as mock_wd:
-            with patch.object(scanner, 'scan_commit_history') as mock_history:
+        with patch.object(scanner, "scan_working_directory") as mock_wd:
+            with patch.object(scanner, "scan_commit_history") as mock_history:
                 wd_result = ScanResult()
                 wd_result.scanned_files = 5
                 mock_wd.return_value = wd_result
@@ -309,9 +314,9 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
 
         scanner.add_custom_pattern(
             name="Custom Secret",
-            pattern=r'custom_secret_[0-9]+',
+            pattern=r"custom_secret_[0-9]+",
             severity="HIGH",
-            description="Custom secret pattern"
+            description="Custom secret pattern",
         )
 
         assert len(scanner.get_patterns()) == initial_count + 1
@@ -321,7 +326,7 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
         test_file.write_text('secret = "custom_secret_12345"')
 
         result = scanner.scan_file("test.py")
-        assert any(f['type'] == 'Custom Secret' for f in result.findings)
+        assert any(f["type"] == "Custom Secret" for f in result.findings)
 
     def test_remove_pattern(self, temp_git_repo):
         """Test removing pattern from scanner."""
@@ -329,9 +334,7 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
 
         # Add a pattern first
         scanner.add_custom_pattern(
-            name="Test Pattern",
-            pattern=r'test_[0-9]+',
-            severity="LOW"
+            name="Test Pattern", pattern=r"test_[0-9]+", severity="LOW"
         )
 
         initial_count = len(scanner.get_patterns())
@@ -346,7 +349,7 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
         scanner = SecurityScanner(repo_path=temp_git_repo)
 
         # Add something to cache
-        scanner._file_cache['test.py'] = "cached content"
+        scanner._file_cache["test.py"] = "cached content"
 
         # Clear cache
         scanner.clear_cache()
