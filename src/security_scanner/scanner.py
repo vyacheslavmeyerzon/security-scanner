@@ -10,6 +10,7 @@ from functools import lru_cache
 
 from .patterns import PatternMatcher, Severity
 from .utils import GitHelper, FileHelper, ColorPrinter, IgnoreFileParser
+from .config import ScannerConfig
 
 
 class ScanResult:
@@ -83,6 +84,7 @@ class SecurityScanner:
         repo_path: Optional[Path] = None,
         pattern_matcher: Optional[PatternMatcher] = None,
         ignore_file: Optional[str] = ".gitscannerignore",
+        config: Optional[ScannerConfig] = None,
     ):
         """
         Initialize the security scanner.
@@ -91,13 +93,22 @@ class SecurityScanner:
             repo_path: Path to the Git repository (defaults to current directory)
             pattern_matcher: Custom pattern matcher (defaults to built-in patterns)
             ignore_file: Name of ignore file to use
+            config: Scanner configuration (auto-loads if not provided)
         """
         self.repo_path = Path(repo_path) if repo_path else Path.cwd()
+        self.config = config or ScannerConfig()
         self.pattern_matcher = pattern_matcher or PatternMatcher()
+
+        # Apply configuration to pattern matcher
+        self._apply_pattern_config()
 
         # Load ignore patterns
         ignore_file_path = self.repo_path / ignore_file if ignore_file else None
         self.ignore_parser = IgnoreFileParser(ignore_file_path)
+
+        # Add configured ignore paths
+        for path in self.config.get_ignored_paths():
+            self.ignore_parser.patterns.append(path)
 
         # Cache for file contents to avoid re-reading
         self._file_cache: Dict[str, Optional[str]] = {}
@@ -105,6 +116,24 @@ class SecurityScanner:
         # Validate repository
         if not GitHelper.is_git_repository(self.repo_path):
             raise ValueError(f"Not a Git repository: {self.repo_path}")
+
+    def _apply_pattern_config(self) -> None:
+        """Apply pattern configuration from config."""
+        # Add custom patterns
+        for pattern_config in self.config.get_custom_patterns():
+            try:
+                self.pattern_matcher.add_custom_pattern(
+                    name=pattern_config["name"],
+                    pattern=pattern_config["pattern"],
+                    severity=Severity[pattern_config["severity"]],
+                    description=pattern_config.get("description", ""),
+                )
+            except (KeyError, ValueError) as e:
+                ColorPrinter.print_error(f"Invalid custom pattern: {e}")
+
+        # Disable patterns
+        for pattern_name in self.config.get_disabled_patterns():
+            self.pattern_matcher.remove_pattern(pattern_name)
 
     def scan_file(self, filepath: str, content: Optional[str] = None) -> ScanResult:
         """
@@ -132,7 +161,8 @@ class SecurityScanner:
         # Get file content
         if content is None:
             full_path = self.repo_path / filepath
-            content = FileHelper.read_file_safely(full_path)
+            max_size = self.config.get("scan.max_file_size_mb", 10)
+            content = FileHelper.read_file_safely(full_path, max_size_mb=max_size)
 
             if content is None:
                 result.skipped_files = 1
@@ -181,14 +211,35 @@ class SecurityScanner:
             f"Scanning {len(all_files)} files in working directory..."
         )
 
+        # Determine number of workers
+        max_workers = self.config.get_parallel_workers() or os.cpu_count() or 4
+
         # Use thread pool for parallel scanning
-        with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_file = {
                 executor.submit(self.scan_file, filepath): filepath
                 for filepath in all_files
             }
 
-            for future in as_completed(future_to_file):
+            # Show progress if enabled
+            show_progress = self.config.should_show_progress()
+            if show_progress:
+                try:
+                    from tqdm import tqdm
+
+                    futures = tqdm(
+                        as_completed(future_to_file),
+                        total=len(future_to_file),
+                        desc="Scanning files",
+                        unit="files",
+                    )
+                except ImportError:
+                    futures = as_completed(future_to_file)
+                    show_progress = False
+            else:
+                futures = as_completed(future_to_file)
+
+            for future in futures:
                 filepath = future_to_file[future]
                 try:
                     file_result = future.result()
@@ -210,6 +261,10 @@ class SecurityScanner:
         """
         result = ScanResult()
 
+        # Use configured limit if not explicitly provided
+        if limit == 100:  # Default value
+            limit = self.config.get("scan.history_limit", 100)
+
         # Get list of commits
         commits = GitHelper.get_commit_list(self.repo_path, limit)
 
@@ -222,7 +277,22 @@ class SecurityScanner:
         # Track files we've already scanned to avoid duplicates
         scanned_file_versions: Set[str] = set()
 
-        for i, commit in enumerate(commits):
+        # Show progress if enabled
+        show_progress = self.config.should_show_progress()
+        if show_progress:
+            try:
+                from tqdm import tqdm
+
+                commit_iterator = tqdm(
+                    enumerate(commits), total=len(commits), desc="Scanning commits"
+                )
+            except ImportError:
+                commit_iterator = enumerate(commits)
+                show_progress = False
+        else:
+            commit_iterator = enumerate(commits)
+
+        for i, commit in commit_iterator:
             # Get changed files in this commit
             changed_files = GitHelper.get_changed_files_in_commit(
                 self.repo_path, commit
@@ -251,14 +321,16 @@ class SecurityScanner:
 
                     result.merge(file_result)
 
-            # Show progress
-            if (i + 1) % 10 == 0:
-                ColorPrinter.print_info(f"Processed {i + 1}/{len(commits)} commits...")
+            # Show progress for non-tqdm case
+            if not show_progress and (i + 1) % 10 == 0:
+                ColorPrinter.print_info(
+                    f"Processed {i + 1}/{len(commits)} commits..."
+                )
 
         return result
 
     def scan_full(
-        self, include_history: bool = True, history_limit: int = 100
+        self, include_history: bool = True, history_limit: Optional[int] = None
     ) -> ScanResult:
         """
         Perform a full scan of the repository.
@@ -280,7 +352,8 @@ class SecurityScanner:
         # Scan commit history if requested
         if include_history:
             ColorPrinter.print_info("\n=== Scanning commit history ===")
-            history_result = self.scan_commit_history(history_limit)
+            limit = history_limit or self.config.get("scan.history_limit", 100)
+            history_result = self.scan_commit_history(limit)
             result.merge(history_result)
 
         return result
@@ -289,7 +362,8 @@ class SecurityScanner:
     def _get_cached_file_content(self, filepath: str) -> Optional[str]:
         """Get file content with caching."""
         full_path = self.repo_path / filepath
-        return FileHelper.read_file_safely(full_path)
+        max_size = self.config.get("scan.max_file_size_mb", 10)
+        return FileHelper.read_file_safely(full_path, max_size_mb=max_size)
 
     def clear_cache(self) -> None:
         """Clear the file content cache."""
@@ -331,3 +405,7 @@ class SecurityScanner:
     def get_patterns(self) -> List[Dict[str, str]]:
         """Get list of all active patterns."""
         return self.pattern_matcher.get_patterns()
+
+    def get_config(self) -> ScannerConfig:
+        """Get scanner configuration."""
+        return self.config

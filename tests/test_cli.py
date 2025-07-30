@@ -55,7 +55,7 @@ class TestCLI:
         assert args.no_history is False
         assert args.history_limit == 100
         assert args.quiet is False
-        assert args.min_severity == "LOW"
+        assert args.min_severity is None  # No default in parser, handled by config
         assert args.ignore_file == ".gitscannerignore"
 
     @patch("security_scanner.cli.SecurityScanner")
@@ -128,7 +128,7 @@ class TestCLI:
 
         assert result == 0
         mock_scanner.scan_full.assert_called_once_with(
-            include_history=True, history_limit=100
+            include_history=True
         )
 
     @patch("security_scanner.cli.SecurityScanner")
@@ -143,7 +143,7 @@ class TestCLI:
 
         assert result == 0
         mock_scanner.scan_full.assert_called_once_with(
-            include_history=False, history_limit=100
+            include_history=False
         )
 
     @patch("security_scanner.cli.SecurityScanner")
