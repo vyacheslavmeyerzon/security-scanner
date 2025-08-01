@@ -1,6 +1,6 @@
 # Git Security Scanner
 
-[![PyPI version](https://badge.fury.io/py/git-security-scanner.svg)](https://badge.fury.io/py/git-security-scanner)
+[![PyPI version](https://badge.fury.io/py/git-security-scanner.svg)](https://pypi.org/project/git-security-scanner/)
 [![Python versions](https://img.shields.io/pypi/pyversions/git-security-scanner.svg)](https://pypi.org/project/git-security-scanner/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/vyacheslavmeyerzon/security-scanner/actions/workflows/tests.yml/badge.svg)](https://github.com/vyacheslavmeyerzon/security-scanner/actions/workflows/tests.yml)
@@ -350,4 +350,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Remember**: Never commit secrets to Git. If you do, rotate them immediately! 🔐
 
-For more information, visit the [documentation](https://github.com/vyacheslavmeyerzon/security-scanner/wiki).
+## 📚 Documentation
+
+For detailed documentation, visit our [Wiki](https://github.com/vyacheslavmeyerzon/security-scanner/wiki).
