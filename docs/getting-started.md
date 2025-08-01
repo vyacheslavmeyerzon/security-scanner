@@ -6,7 +6,7 @@ This guide will help you get up and running with Git Security Scanner in minutes
 
 ### Prerequisites
 
-- Python 3.7 or higher
+- Python 3.8 or higher
 - Git installed on your system
 - A Git repository to scan
 
