@@ -35,8 +35,8 @@ python -m build
 ```
 
 This creates:
-- `dist/git-security-scanner-0.1.0.tar.gz` (source distribution)
-- `dist/git_security_scanner-0.1.0-py3-none-any.whl` (wheel)
+- `dist/git-security-scanner-0.1.1.tar.gz` (source distribution)
+- `dist/git_security_scanner-0.1.1-py3-none-any.whl` (wheel)
 
 ### 4. Verify the Build
 
@@ -45,7 +45,7 @@ This creates:
 twine check dist/*
 
 # Test installation
-pip install dist/git_security_scanner-0.1.0-py3-none-any.whl
+pip install dist/git_security_scanner-0.1.1-py3-none-any.whl
 
 # Run smoke test
 git-security-scanner --version
@@ -116,8 +116,8 @@ Enter your PyPI credentials when prompted.
 
 ```bash
 # Tag the release
-git tag -a v0.1.0 -m "Release version 0.1.0"
-git push origin v0.1.0
+git tag -a v0.1.1 -m "Release version 0.1.1"
+git push origin v0.1.1
 
 # Create release on GitHub
 # Go to https://github.com/vyacheslavmeyerzon/security-scanner/releases/new

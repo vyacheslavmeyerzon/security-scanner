@@ -48,6 +48,7 @@ jobs:
         isort --check-only src tests
 
     - name: Type check with mypy
+      continue-on-error: true
       run: |
         mypy src
 

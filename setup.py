@@ -13,7 +13,7 @@ if readme_file.exists():
 
 setup(
     name="git-security-scanner",
-    version="0.1.0",
+    version="0.1.1",
     author="Vyacheslav Meyerzon",
     author_email="vyacheslav.meyerzon@gmail.com",
     description="A comprehensive tool to detect secrets and sensitive information in Git repositories",
@@ -60,6 +60,7 @@ setup(
             "mypy>=1.0.0",
             "isort>=5.12.0",
             "types-colorama>=0.4.15",
+            "types-PyYAML>=6.0",
             "types-PyYAML>=6.0",
             "build>=0.10.0",
             "twine>=4.0.2",

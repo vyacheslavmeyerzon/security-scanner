@@ -20,7 +20,7 @@ What you expected to happen.
 **Environment:**
  - OS: [e.g. Windows 10, Ubuntu 22.04]
  - Python version: [e.g. 3.11]
- - Git Security Scanner version: [e.g. 0.1.0]
+ - Git Security Scanner version: [e.g. 0.1.1]
 
 **Additional context**
 Add any other context about the problem here.
