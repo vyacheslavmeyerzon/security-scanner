@@ -1,6 +1,6 @@
 # Git Security Scanner
 
-[![PyPI version](https://badge.fury.io/py/git-security-scanner.svg)](https://pypi.org/project/git-security-scanner/)
+[![PyPI version](https://badge.fury.io/py/git-security-scanner.svg)](https://pypi.org/project/git-security-scanner/0.1.2/)
 [![Python versions](https://img.shields.io/pypi/pyversions/git-security-scanner.svg)](https://pypi.org/project/git-security-scanner/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/vyacheslavmeyerzon/security-scanner/actions/workflows/tests.yml/badge.svg)](https://github.com/vyacheslavmeyerzon/security-scanner/actions/workflows/tests.yml)
