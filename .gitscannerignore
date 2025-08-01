@@ -1,0 +1,31 @@
+# Ignore test files with fake secrets
+tests/
+*.test.py
+
+# Ignore build artifacts
+build/
+dist/
+*.egg-info/
+
+# Ignore virtual environments
+venv/
+.venv/
+
+# Ignore IDE files
+.idea/
+.vscode/
+
+# Ignore coverage reports
+htmlcov/
+.coverage
+*.cover
+.pytest_cache/
+
+# Ignore documentation
+docs/_build/
+
+# Ignore GitHub Actions
+.github/
+
+# Ignore old script
+git-security-scanner.py

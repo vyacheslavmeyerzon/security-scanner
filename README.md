@@ -1,176 +1,353 @@
 # Git Security Scanner
 
-A simple Python tool to detect API keys, passwords, and secrets in your Git repositories before they get exposed.
+[![PyPI version](https://badge.fury.io/py/git-security-scanner.svg)](https://badge.fury.io/py/git-security-scanner)
+[![Python versions](https://img.shields.io/pypi/pyversions/git-security-scanner.svg)](https://pypi.org/project/git-security-scanner/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/vyacheslavmeyerzon/security-scanner/actions/workflows/tests.yml/badge.svg)](https://github.com/vyacheslavmeyerzon/security-scanner/actions/workflows/tests.yml)
 
-## Features
+A comprehensive Python tool to detect API keys, passwords, and secrets in Git repositories before they get exposed.
 
-- ✅ Detects 64+ types of secrets (API keys, tokens, passwords)
-- ✅ Scans staged files, working directory, and commit history
-- ✅ Supports AI/ML platforms (OpenAI, Anthropic, HuggingFace, etc.)
-- ✅ Color-coded severity levels
-- ✅ Pre-commit hook support
-- ✅ JSON export for CI/CD integration
+## 🚀 Features
 
-## Quick Start
+- **🔍 Detects 25+ Secret Types**: AWS keys, API tokens, passwords, private keys, and more
+- **🎯 Multiple Scan Modes**: Staged files, working directory, commit history
+- **⚡ High Performance**: Parallel scanning with progress bars and caching
+- **📊 Rich Reports**: Export to JSON, HTML, CSV, or Markdown
+- **🎨 Customizable**: Add custom patterns, ignore files, configure severity levels
+- **🔧 CI/CD Ready**: Pre-commit hooks and pipeline integration
+- **🌍 Cross-Platform**: Works on Linux, macOS, and Windows
 
-### Prerequisites
-- Python 3.7 or higher
-- Git repository to scan
+## 📦 Installation
 
-### Installation
+### From PyPI (Recommended)
 
-1. Download `git-security-scanner.py`
-2. Install the required dependency:
 ```bash
-pip install colorama
+pip install git-security-scanner
 ```
 
-## Usage
+### From Source
+
+```bash
+git clone https://github.com/vyacheslavmeyerzon/security-scanner.git
+cd security-scanner
+pip install -e .
+```
+
+## 🔧 Quick Start
 
 ### Basic Scan
+
 Scan your current repository:
+
 ```bash
-python git-security-scanner.py
+git-security-scanner
 ```
 
-### Scan Another Repository
+### Scan Specific Repository
+
 ```bash
-python git-security-scanner.py --path /path/to/repo
+git-security-scanner /path/to/repository
 ```
 
 ### Pre-commit Mode
-Check only staged files (files added with `git add`):
+
+Check only staged files:
+
 ```bash
-python git-security-scanner.py --pre-commit
+git-security-scanner --pre-commit
 ```
 
 ### Export Results
-Save findings to a JSON file:
+
 ```bash
-python git-security-scanner.py --export results.json
+# JSON format
+git-security-scanner --export results.json
+
+# HTML report
+git-security-scanner --export report.html
+
+# CSV format
+git-security-scanner --export findings.csv
+
+# Markdown report
+git-security-scanner --export report.md
 ```
 
-### Quiet Mode
-Show only critical information:
+## 🎯 What It Detects
+
+### Cloud Services
+- AWS Access Keys and Secret Keys
+- Azure Storage Keys
+- Google Cloud API Keys and OAuth Tokens
+
+### AI/ML Platforms
+- OpenAI API Keys
+- Anthropic (Claude) API Keys
+- HuggingFace Tokens
+- Cohere API Keys
+
+### Version Control
+- GitHub Personal Access Tokens
+- GitLab Access Tokens
+- Bitbucket App Passwords
+
+### Databases
+- MongoDB Connection Strings
+- PostgreSQL Connection URLs
+- MySQL Connection Strings
+
+### Communication & More
+- Slack Tokens
+- Discord Bot Tokens
+- Stripe API Keys
+- JWT Tokens
+- Private Keys (RSA, EC, DSA)
+- Generic Passwords and Secrets
+
+## 📋 Command Line Options
+
 ```bash
-python git-security-scanner.py --quiet
+usage: git-security-scanner [-h] [-v] [-c CONFIG] [--pre-commit] [--no-history]
+                           [--history-limit N] [--export FILE] [--quiet]
+                           [--min-severity {LOW,MEDIUM,HIGH,CRITICAL}]
+                           [--show-patterns] [--no-color] [--no-progress]
+                           [path]
+
+Detect API keys, passwords, and secrets in Git repositories
+
+positional arguments:
+  path                  Path to Git repository (default: current directory)
+
+optional arguments:
+  -h, --help           Show help message
+  -v, --version        Show version
+  -c, --config         Path to config file
+  --pre-commit         Scan only staged files
+  --no-history         Skip commit history scan
+  --history-limit N    Limit history scan to N commits (default: 100)
+  --export FILE        Export findings (.json, .html, .csv, .md)
+  --quiet              Minimal output
+  --min-severity LEVEL Minimum severity to report
+  --show-patterns      Show all detection patterns
+  --no-color           Disable colored output
+  --no-progress        Disable progress bars
 ```
 
-### All Options
+## ⚙️ Configuration
+
+### Configuration File
+
+Create `.gitscannerrc.json` or `.gitscannerrc.yaml`:
+
+```json
+{
+  "patterns": {
+    "custom": [
+      {
+        "name": "Company API Key",
+        "pattern": "COMP-[A-Z0-9]{32}",
+        "severity": "HIGH",
+        "description": "Internal company API key"
+      }
+    ],
+    "disabled": ["Generic Secret", "Environment Variable"]
+  },
+  "scan": {
+    "history_limit": 50,
+    "max_file_size_mb": 5,
+    "parallel_workers": 4
+  },
+  "output": {
+    "format": "console",
+    "min_severity": "MEDIUM",
+    "color": true
+  },
+  "cache": {
+    "enabled": true,
+    "ttl_hours": 48
+  }
+}
+```
+
+### Environment Variables
+
 ```bash
-# Show help
-python git-security-scanner.py --help
-
-# Limit commit history scan (default: 100)
-python git-security-scanner.py --history-limit 50
-
-# Combine options
-python git-security-scanner.py --quiet --export scan.json --history-limit 20
+export SCANNER_HISTORY_LIMIT=25
+export SCANNER_MIN_SEVERITY=HIGH
+export SCANNER_QUIET=true
+export SCANNER_NO_COLOR=true
 ```
 
-## What It Detects
+### Ignore Files
 
-- **Cloud Services**: AWS, Azure, Google Cloud keys
-- **AI Platforms**: OpenAI, Anthropic, HuggingFace, Cohere, etc.
-- **Version Control**: GitHub, GitLab, Bitbucket tokens
-- **Databases**: MongoDB, PostgreSQL, MySQL connection strings
-- **Communication**: Slack, Discord, Telegram tokens
-- **Payment**: Stripe, PayPal API keys
-- **Generic**: Passwords, private keys, JWT tokens
+Create `.gitscannerignore`:
 
-## Understanding Results
-
-### Severity Levels
-- 🔴 **CRITICAL**: Immediate action required (private keys, passwords)
-- 🟡 **HIGH**: Serious issues (API keys, tokens)
-- 🟣 **MEDIUM**: Should be reviewed (potential secrets)
-- 🔵 **LOW**: Minor concerns (configuration files)
-
-### Example Output
 ```
-[CRITICAL] AWS Access Key
-Type: PATTERN
-File: config.py
-Line: 45
-Content: AKIA****************
+# Ignore test files
+tests/
+*.test.py
 
-[HIGH] OpenAI API Key
-Type: PATTERN
-File: .env
-Line: 3
-Content: sk-************************************************
+# Ignore vendor directories
+vendor/
+node_modules/
+
+# Ignore specific files
+config.example.json
 ```
 
-## Git Hook Setup
+## 🪝 Git Hook Setup
 
-To automatically check for secrets before every commit:
+### Pre-commit Hook
 
-1. Create `.git/hooks/pre-commit`:
 ```bash
+# Install as pre-commit hook
+cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/bash
-python /path/to/git-security-scanner.py --pre-commit
-```
+git-security-scanner --pre-commit
+EOF
 
-2. Make it executable:
-```bash
 chmod +x .git/hooks/pre-commit
 ```
 
-## Best Practices
+### Using pre-commit Framework
 
-1. **Add to .gitignore**: Always exclude sensitive files
-   ```
-   .env
-   *.pem
-   *.key
-   .cursor/
-   ```
+Add to `.pre-commit-config.yaml`:
 
-2. **If secrets are found**:
-   - Immediately rotate/change the exposed credentials
-   - Remove from Git history using `git filter-branch` or BFG
-   - Check if credentials were used in production
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: security-scanner
+        name: Git Security Scanner
+        entry: git-security-scanner --pre-commit
+        language: system
+        pass_filenames: false
+```
 
-3. **Prevention**:
-   - Use environment variables for secrets
-   - Use secret management tools (Vault, AWS Secrets Manager)
-   - Run scanner in CI/CD pipeline
-
-## CI/CD Integration
+## 🔄 CI/CD Integration
 
 ### GitHub Actions
+
 ```yaml
-- name: Security Scan
-  run: |
-    pip install colorama
-    python git-security-scanner.py --quiet --export scan.json
+name: Security Scan
+
+on: [push, pull_request]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Full history for commit scanning
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install scanner
+        run: pip install git-security-scanner
+      
+      - name: Run security scan
+        run: git-security-scanner --export results.json
+      
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: security-scan-results
+          path: results.json
 ```
 
-### Generic CI/CD
-```bash
-# Exit with error if secrets found
-python git-security-scanner.py --quiet || exit 1
+### GitLab CI
+
+```yaml
+security_scan:
+  stage: test
+  script:
+    - pip install git-security-scanner
+    - git-security-scanner --quiet --export report.html
+  artifacts:
+    reports:
+      expose_as: 'Security Report'
+      paths: ['report.html']
+    when: on_failure
 ```
 
-## Troubleshooting
+## 📈 Understanding Results
 
-**"Not a Git repository" error**
-- Make sure you're in a directory with `.git` folder
-- Or specify path: `--path /path/to/git/repo`
+### Severity Levels
 
-**Too many false positives**
-- The scanner might detect its own patterns
-- Example passwords in documentation
-- Use `.gitscannerignore` file (coming soon)
+- 🔴 **CRITICAL**: Immediate action required (database credentials, private keys)
+- 🟡 **HIGH**: Serious issues (API keys, access tokens)
+- 🟣 **MEDIUM**: Should be reviewed (generic secrets, weak patterns)
+- 🔵 **LOW**: Minor concerns (environment variables, configuration)
 
-**Scanner is slow**
-- Use `--history-limit 10` for faster scans
-- Use `--pre-commit` for checking only new changes
+### Example Output
 
-## License
+```
+=== Scanning working directory ===
+Scanning 150 files in working directory...
+100%|████████████| 150/150 [00:02<00:00, 68.42files/s]
 
-MIT License - feel free to use and modify!
+[CRITICAL] MongoDB Connection
+  Description: MongoDB Connection String with credentials
+  File: config/database.py
+  Line: 15
+  Secret: mongodb://user:****@localhost:27017/db
+
+[HIGH] GitHub Token
+  Description: GitHub Personal Access Token
+  File: .env.example
+  Line: 3
+  Secret: ghp_****************************1234
+
+Summary: Found 2 potential secrets:
+  CRITICAL: 1
+  HIGH: 1
+```
+
+## 🛡️ Best Practices
+
+### If Secrets Are Found
+
+1. **Immediately rotate** the exposed credentials
+2. **Remove from history** using `git filter-branch` or BFG Repo-Cleaner
+3. **Audit access logs** to check if credentials were compromised
+4. **Enable 2FA** where possible
+
+### Prevention
+
+- Use environment variables for sensitive data
+- Implement secret management tools (HashiCorp Vault, AWS Secrets Manager)
+- Add `.env` files to `.gitignore`
+- Use `.gitscannerignore` for false positives
+- Run scanner in CI/CD pipelines
+- Set up pre-commit hooks
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Thanks to all contributors who have helped improve this tool
+- Inspired by similar tools like truffleHog and GitLeaks
+- Built with love for the security community
 
 ---
 
 **Remember**: Never commit secrets to Git. If you do, rotate them immediately! 🔐
+
+For more information, visit the [documentation](https://github.com/vyacheslavmeyerzon/security-scanner/wiki).
