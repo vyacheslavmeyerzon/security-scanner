@@ -35,7 +35,12 @@ class TestScannerConfig:
             assert config.get("scan.max_file_size_mb") == 10
             assert config.get("output.format") == "console"
             # min_severity может быть переопределен конфигурацией
-            assert config.get("output.min_severity") in ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+            assert config.get("output.min_severity") in [
+                "LOW",
+                "MEDIUM",
+                "HIGH",
+                "CRITICAL",
+            ]
             assert config.get("output.color") is True
         finally:
             os.chdir(original_cwd)
@@ -268,7 +273,7 @@ class TestScannerConfig:
         os.chdir(temp_dir)
 
         # Clear any scanner env vars
-        scanner_env_vars = [k for k in os.environ if k.startswith('SCANNER_')]
+        scanner_env_vars = [k for k in os.environ if k.startswith("SCANNER_")]
         original_env = {k: os.environ.get(k) for k in scanner_env_vars}
         for k in scanner_env_vars:
             os.environ.pop(k, None)
@@ -308,7 +313,7 @@ class TestScannerConfig:
         os.chdir(temp_dir)
 
         # Clear any scanner env vars
-        scanner_env_vars = [k for k in os.environ if k.startswith('SCANNER_')]
+        scanner_env_vars = [k for k in os.environ if k.startswith("SCANNER_")]
         original_env = {k: os.environ.get(k) for k in scanner_env_vars}
         for k in scanner_env_vars:
             os.environ.pop(k, None)

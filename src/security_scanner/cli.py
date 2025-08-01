@@ -5,12 +5,14 @@ Command-line interface for the security scanner.
 import argparse
 from pathlib import Path
 from typing import Optional, List, Dict
+from datetime import datetime
 
 from . import __version__
 from .scanner import SecurityScanner
 from .patterns import Severity
 from .utils import ColorPrinter, FileHelper
 from .config import ScannerConfig, create_example_config
+from .export import ReportGenerator
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -90,7 +92,10 @@ Examples:
     )
 
     parser.add_argument(
-        "--export", type=Path, metavar="FILE", help="Export findings to JSON file"
+        "--export",
+        type=Path,
+        metavar="FILE",
+        help="Export findings (format: .json, .html, .csv, .md)",  # noqa: E501
     )
 
     parser.add_argument(
@@ -130,6 +135,24 @@ Examples:
         "--no-progress",
         action="store_true",
         help="Disable progress bars",
+    )
+
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable cache for this scan",
+    )
+
+    parser.add_argument(
+        "--clear-cache",
+        action="store_true",
+        help="Clear cache and exit",
+    )
+
+    parser.add_argument(
+        "--cache-stats",
+        action="store_true",
+        help="Show cache statistics and exit",
     )
 
     parser.add_argument(
@@ -196,6 +219,8 @@ def main(args: Optional[List[str]] = None) -> int:
         config.set("output.format", parsed_args.output_format)
     if parsed_args.no_progress:
         config.set("scan.show_progress", False)
+    if parsed_args.no_cache:
+        config.set("cache.enabled", False)
 
     # Disable color if requested
     if parsed_args.no_color or not config.get("output.color", True):
@@ -230,6 +255,29 @@ def main(args: Optional[List[str]] = None) -> int:
             show_patterns(scanner)
             return 0
 
+        # Handle cache operations
+        if parsed_args.clear_cache:
+            scanner.clear_cache()
+            ColorPrinter.print_info("Cache cleared successfully")
+            return 0
+
+        if parsed_args.cache_stats:
+            stats = scanner.get_cache_stats()
+            if stats:
+                ColorPrinter.print_info("\nCache Statistics:")
+                ColorPrinter.print_info(f"  Total entries: {stats['total_entries']}")
+                ColorPrinter.print_info(f"  File entries: {stats['file_entries']}")
+                ColorPrinter.print_info(f"  Commit entries: {stats['commit_entries']}")
+                ColorPrinter.print_info(f"  Cache size: {stats['cache_size_mb']} MB")
+                ColorPrinter.print_info(f"  TTL: {stats['ttl_hours']} hours")
+                if stats["oldest_entry"]:
+                    ColorPrinter.print_info(f"  Oldest entry: {stats['oldest_entry']}")
+                if stats["newest_entry"]:
+                    ColorPrinter.print_info(f"  Newest entry: {stats['newest_entry']}")
+            else:
+                ColorPrinter.print_info("Cache is disabled")
+            return 0
+
         # Perform scan based on mode
         if parsed_args.pre_commit:
             # Pre-commit mode - scan only staged files
@@ -252,6 +300,7 @@ def main(args: Optional[List[str]] = None) -> int:
         if output_format == "json":
             # JSON output
             import json
+
             output_data = {
                 "version": __version__,
                 "scanned_files": result.scanned_files,
@@ -275,9 +324,7 @@ def main(args: Optional[List[str]] = None) -> int:
                 for error in result.errors[:5]:  # Show first 5 errors
                     ColorPrinter.print_error(f"  - {error}")
                 if len(result.errors) > 5:
-                    ColorPrinter.print_error(
-                        f"  ... and {len(result.errors) - 5} more"
-                    )
+                    ColorPrinter.print_error(f"  ... and {len(result.errors) - 5} more")
 
             # Display findings
             for finding in filtered_findings:
@@ -298,16 +345,46 @@ def main(args: Optional[List[str]] = None) -> int:
 
         # Export if requested
         if parsed_args.export:
-            if output_format == "json" or parsed_args.export.suffix == ".json":
-                FileHelper.export_findings_to_json(filtered_findings, parsed_args.export)
-            elif output_format == "html" or parsed_args.export.suffix == ".html":
-                # TODO: Implement HTML export
-                ColorPrinter.print_error("HTML export not yet implemented")
-            elif output_format == "csv" or parsed_args.export.suffix == ".csv":
-                # TODO: Implement CSV export
-                ColorPrinter.print_error("CSV export not yet implemented")
-            else:
-                FileHelper.export_findings_to_json(filtered_findings, parsed_args.export)
+            export_format = FileHelper.determine_export_format(
+                parsed_args.export,
+                output_format if output_format != "console" else None,
+            )
+
+            # Prepare scan statistics
+            scan_stats = {
+                "scanned_files": result.scanned_files,
+                "skipped_files": result.skipped_files,
+                "errors": len(result.errors),
+                "scan_timestamp": datetime.now().isoformat(),
+            }
+
+            # Create report generator
+            report_gen = ReportGenerator(filtered_findings, scan_stats)
+
+            try:
+                if export_format == "csv":
+                    report_gen.export_to_csv(parsed_args.export)
+                    ColorPrinter.print_info(
+                        f"CSV report exported to: {parsed_args.export}"
+                    )  # noqa: E501
+                elif export_format == "html":
+                    report_gen.export_to_html(parsed_args.export)
+                    ColorPrinter.print_info(
+                        f"HTML report exported to: {parsed_args.export}"
+                    )  # noqa: E501
+                elif export_format == "markdown":
+                    report_gen.export_to_markdown(parsed_args.export)
+                    ColorPrinter.print_info(
+                        f"Markdown report exported to: {parsed_args.export}"
+                    )  # noqa: E501
+                else:  # Default to JSON with statistics
+                    report_gen.export_to_json_with_stats(parsed_args.export)
+                    ColorPrinter.print_info(
+                        f"JSON report exported to: {parsed_args.export}"
+                    )  # noqa: E501
+            except Exception as e:
+                ColorPrinter.print_error(f"Failed to export report: {str(e)}")
+                return 2
 
         # Determine exit code
         if filtered_findings:

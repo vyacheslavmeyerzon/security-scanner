@@ -6,7 +6,8 @@ import json
 import re
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Union
+
 from colorama import Fore, Style, init
 
 # Initialize colorama for cross-platform color support
@@ -266,6 +267,37 @@ class FileHelper:
         except Exception as e:
             ColorPrinter.print_error(f"Failed to export findings: {str(e)}")
             return False
+
+    @staticmethod
+    def determine_export_format(
+        output_path: Union[str, Path], format_hint: Optional[str] = None
+    ) -> str:
+        """
+        Determine export format from file extension or format hint.
+
+        Args:
+            output_path: Path to output file
+            format_hint: Optional format hint (json, html, csv, markdown)
+
+        Returns:
+            Export format string
+        """
+        output_path = Path(output_path)
+
+        if format_hint:
+            return format_hint.lower()
+
+        suffix = output_path.suffix.lower()
+        format_map = {
+            ".json": "json",
+            ".html": "html",
+            ".htm": "html",
+            ".csv": "csv",
+            ".md": "markdown",
+            ".markdown": "markdown",
+        }
+
+        return format_map.get(suffix, "json")
 
 
 class IgnoreFileParser:

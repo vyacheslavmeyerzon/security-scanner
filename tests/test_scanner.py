@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from security_scanner.scanner import SecurityScanner, ScanResult
 from security_scanner.patterns import Severity
+from security_scanner.scanner import ScanResult, SecurityScanner
 
 
 class TestScanResult:
@@ -210,7 +210,9 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
         assert result.scanned_files == 1
         # Check if findings exist and are of expected type
         if result.findings:
-            assert any("GitHub" in f["type"] or "Token" in f["type"] for f in result.findings)
+            assert any(
+                "GitHub" in f["type"] or "Token" in f["type"] for f in result.findings
+            )
 
     @patch("security_scanner.scanner.GitHelper.get_staged_files")
     def test_scan_staged_files_empty(self, mock_get_staged, temp_git_repo):
@@ -261,9 +263,11 @@ api_key = "sk-1234567890123456789012345678901234567890123456789012"
         mock_get_changed.return_value = ["secret.py"]
 
         # Mock file content with secret
-        mock_get_content.return_value = 'mongodb_uri = "mongodb://user:pass@localhost/db"'
+        mock_get_content.return_value = (
+            'mongodb_uri = "mongodb://user:pass@localhost/db"'
+        )
 
-        result = scanner.scan_commit_history(limit=10)
+        scanner.scan_commit_history(limit=10)
 
         # Check that commits were processed
         assert mock_get_commits.called

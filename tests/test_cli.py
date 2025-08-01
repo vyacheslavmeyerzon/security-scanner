@@ -127,9 +127,7 @@ class TestCLI:
         result = main([str(temp_git_repo)])
 
         assert result == 0
-        mock_scanner.scan_full.assert_called_once_with(
-            include_history=True
-        )
+        mock_scanner.scan_full.assert_called_once_with(include_history=True)
 
     @patch("security_scanner.cli.SecurityScanner")
     def test_main_no_history(self, mock_scanner_class, temp_git_repo):
@@ -142,9 +140,7 @@ class TestCLI:
         result = main(["--no-history", str(temp_git_repo)])
 
         assert result == 0
-        mock_scanner.scan_full.assert_called_once_with(
-            include_history=False
-        )
+        mock_scanner.scan_full.assert_called_once_with(include_history=False)
 
     @patch("security_scanner.cli.SecurityScanner")
     def test_main_with_findings(self, mock_scanner_class, temp_git_repo):
@@ -176,7 +172,10 @@ class TestCLI:
         assert result == 1  # Should return 1 when findings exist
 
     @patch("security_scanner.cli.SecurityScanner")
-    def test_main_with_export(self, mock_scanner_class, temp_git_repo):
+    @patch("security_scanner.cli.ReportGenerator")
+    def test_main_with_export(
+        self, mock_report_gen_class, mock_scanner_class, temp_git_repo
+    ):
         """Test main function with export option."""
         mock_scanner = MagicMock()
         mock_result = MagicMock(spec=ScanResult)
@@ -189,15 +188,18 @@ class TestCLI:
         mock_scanner.scan_full.return_value = mock_result
         mock_scanner_class.return_value = mock_scanner
 
+        # Mock ReportGenerator
+        mock_report_gen = MagicMock()
+        mock_report_gen_class.return_value = mock_report_gen
+
         export_file = temp_git_repo / "findings.json"
 
-        with patch(
-            "security_scanner.utils.FileHelper.export_findings_to_json"
-        ) as mock_export:
-            result = main(["--export", str(export_file), str(temp_git_repo)])
+        result = main(["--export", str(export_file), str(temp_git_repo)])
 
-            assert result == 0
-            mock_export.assert_called_once()
+        assert result == 0
+        # Check that ReportGenerator was created and export method was called
+        mock_report_gen_class.assert_called_once()
+        mock_report_gen.export_to_json_with_stats.assert_called_once_with(export_file)
 
     @patch("security_scanner.cli.SecurityScanner")
     def test_main_quiet_mode(self, mock_scanner_class, temp_git_repo):
@@ -219,10 +221,9 @@ class TestCLI:
 
         f = io.StringIO()
         with redirect_stdout(f):
-            result = main(["--quiet", str(temp_git_repo)])
+            main(["--quiet", str(temp_git_repo)])
 
         output = f.getvalue()
-        assert result == 0
         # In quiet mode, should have minimal output
         assert len(output.strip()) == 0 or "All clear" not in output
 

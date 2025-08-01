@@ -5,10 +5,8 @@ Configuration management for the security scanner.
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 import yaml
-
-from .patterns import Severity
 
 
 class ScannerConfig:
@@ -44,6 +42,11 @@ class ScannerConfig:
         "ignore": {
             "paths": [],
             "patterns": [],
+        },
+        "cache": {
+            "enabled": True,
+            "ttl_hours": 24,
+            "show_hits": False,
         },
     }
 
@@ -125,9 +128,15 @@ class ScannerConfig:
             "SCANNER_PARALLEL_WORKERS": ("scan", "parallel_workers", int),
             "SCANNER_SHOW_PROGRESS": ("scan", "show_progress", self._parse_bool),
             "SCANNER_OUTPUT_FORMAT": ("output", "format", str),
-            "SCANNER_NO_COLOR": ("output", "color", lambda x: not self._parse_bool(x)),
+            "SCANNER_NO_COLOR": (
+                "output",
+                "color",
+                lambda x: not self._parse_bool(x),
+            ),  # noqa: E501
             "SCANNER_QUIET": ("output", "quiet", self._parse_bool),
             "SCANNER_MIN_SEVERITY": ("output", "min_severity", str),
+            "SCANNER_CACHE_ENABLED": ("cache", "enabled", self._parse_bool),
+            "SCANNER_CACHE_TTL": ("cache", "ttl_hours", int),
         }
 
         for env_var, (section, key, parser) in env_mapping.items():
@@ -236,7 +245,9 @@ class ScannerConfig:
 
         try:
             if save_path.suffix in [".yaml", ".yml"]:
-                content = yaml.dump(self.config, default_flow_style=False, sort_keys=True)
+                content = yaml.dump(
+                    self.config, default_flow_style=False, sort_keys=True
+                )
             else:
                 content = json.dumps(self.config, indent=2, sort_keys=True)
 
@@ -279,7 +290,10 @@ class ScannerConfig:
 
             if "severity" in pattern:
                 if pattern["severity"] not in ["LOW", "MEDIUM", "HIGH", "CRITICAL"]:
-                    errors.append(f"Custom pattern {i} has invalid severity: {pattern['severity']}")
+                    errors.append(
+                        f"Custom pattern {i} has invalid severity: "  # noqa: E501
+                        f"{pattern['severity']}"
+                    )
 
         return errors
 
@@ -313,6 +327,11 @@ def create_example_config(output_path: Path) -> None:
         "ignore": {
             "paths": ["vendor/", "third_party/"],
             "patterns": ["*.test.js", "*.spec.ts"],
+        },
+        "cache": {
+            "enabled": True,
+            "ttl_hours": 48,
+            "show_hits": False,
         },
     }
 

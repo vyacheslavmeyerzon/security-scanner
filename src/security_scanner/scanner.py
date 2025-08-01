@@ -3,14 +3,15 @@ Core scanner module for detecting secrets in Git repositories.
 """
 
 import os
-from pathlib import Path
-from typing import List, Dict, Optional, Set, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
 
-from .patterns import PatternMatcher, Severity
-from .utils import GitHelper, FileHelper, ColorPrinter, IgnoreFileParser
+from .cache import ScanCache
 from .config import ScannerConfig
+from .patterns import PatternMatcher, Severity
+from .utils import ColorPrinter, FileHelper, GitHelper, IgnoreFileParser
 
 
 class ScanResult:
@@ -85,6 +86,8 @@ class SecurityScanner:
         pattern_matcher: Optional[PatternMatcher] = None,
         ignore_file: Optional[str] = ".gitscannerignore",
         config: Optional[ScannerConfig] = None,
+        use_cache: bool = True,
+        cache_dir: Optional[Path] = None,
     ):
         """
         Initialize the security scanner.
@@ -94,10 +97,19 @@ class SecurityScanner:
             pattern_matcher: Custom pattern matcher (defaults to built-in patterns)
             ignore_file: Name of ignore file to use
             config: Scanner configuration (auto-loads if not provided)
+            use_cache: Whether to use caching for scan results
+            cache_dir: Directory for cache storage
         """
         self.repo_path = Path(repo_path) if repo_path else Path.cwd()
         self.config = config or ScannerConfig()
         self.pattern_matcher = pattern_matcher or PatternMatcher()
+        self.use_cache = use_cache and self.config.get("cache.enabled", True)
+
+        # Initialize cache if enabled
+        self.cache = None
+        if self.use_cache:
+            cache_ttl = self.config.get("cache.ttl_hours", 24)
+            self.cache = ScanCache(cache_dir, cache_ttl)
 
         # Apply configuration to pattern matcher
         self._apply_pattern_config()
@@ -168,8 +180,24 @@ class SecurityScanner:
                 result.skipped_files = 1
                 return result
 
+        # Check cache if enabled
+        if self.cache and content is not None:
+            cached_findings = self.cache.get_file_cache(filepath, content)
+            if cached_findings is not None:
+                for finding in cached_findings:
+                    result.add_finding(finding)
+                result.scanned_files = 1
+                if self.config.get("cache.show_hits", False):
+                    ColorPrinter.print_info(f"Cache hit: {filepath}")
+                return result
+
         # Scan for secrets
         findings = self.pattern_matcher.find_secrets(content, filepath)
+
+        # Cache the results if enabled
+        if self.cache and content is not None:
+            self.cache.set_file_cache(filepath, content, findings)
+
         for finding in findings:
             result.add_finding(finding)
 
@@ -313,19 +341,32 @@ class SecurityScanner:
                 )
 
                 if content is not None:
+                    # Check cache for commit files
+                    if self.cache:
+                        cached_findings = self.cache.get_commit_cache(commit, filepath)
+                        if cached_findings is not None:
+                            for finding in cached_findings:
+                                finding["commit"] = commit[:8]
+                                result.add_finding(finding)
+                            result.scanned_files += 1
+                            continue
+
                     file_result = self.scan_file(filepath, content)
 
-                    # Add commit info to findings
+                    # Add commit info to findings and cache if enabled
                     for finding in file_result.findings:
                         finding["commit"] = commit[:8]
+
+                    if self.cache and file_result.findings is not None:
+                        self.cache.set_commit_cache(
+                            commit, filepath, file_result.findings
+                        )
 
                     result.merge(file_result)
 
             # Show progress for non-tqdm case
             if not show_progress and (i + 1) % 10 == 0:
-                ColorPrinter.print_info(
-                    f"Processed {i + 1}/{len(commits)} commits..."
-                )
+                ColorPrinter.print_info(f"Processed {i + 1}/{len(commits)} commits...")
 
         return result
 
@@ -365,10 +406,20 @@ class SecurityScanner:
         max_size = self.config.get("scan.max_file_size_mb", 10)
         return FileHelper.read_file_safely(full_path, max_size_mb=max_size)
 
+    def get_cache_stats(self) -> Optional[Dict[str, Any]]:
+        """Get cache statistics if cache is enabled."""
+        if self.cache:
+            return self.cache.get_stats()
+        return None
+
     def clear_cache(self) -> None:
-        """Clear the file content cache."""
+        """Clear the file content cache and scan cache."""
         self._get_cached_file_content.cache_clear()
         self._file_cache.clear()
+
+        if self.cache:
+            self.cache.clear_all()
+            ColorPrinter.print_info("Cache cleared successfully")
 
     def add_custom_pattern(
         self, name: str, pattern: str, severity: str = "MEDIUM", description: str = ""

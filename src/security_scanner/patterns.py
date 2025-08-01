@@ -4,7 +4,7 @@ Pattern definitions for detecting various types of secrets.
 
 import re
 from enum import Enum
-from typing import Dict, List, NamedTuple, Pattern, Optional, Any
+from typing import Any, Dict, List, NamedTuple, Optional, Pattern
 
 
 class Severity(Enum):
