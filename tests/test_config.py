@@ -104,7 +104,8 @@ class TestScannerConfig:
         try:
             config = ScannerConfig()
             assert config.get("output.quiet") is True
-            assert config.config_path == config_path
+            # Resolve paths for comparison (handles symlinks on macOS)
+            assert config.config_path.resolve() == config_path.resolve()
         finally:
             os.chdir(original_cwd)
 
