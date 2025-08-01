@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "git-security-scanner"
-version = "0.1.2"
+version = "0.1.3"
 description = "A comprehensive tool to detect secrets and sensitive information in Git repositories"
 readme = "README.md"
 authors = [
