@@ -4,6 +4,7 @@
 
 We're excited to announce the first public release of Git Security Scanner!
 
+
 Git Security Scanner is a comprehensive tool designed to help developers and security teams detect sensitive information in Git repositories before it gets exposed.
 
 ## ✨ Key Features
