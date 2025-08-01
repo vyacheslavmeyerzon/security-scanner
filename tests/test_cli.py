@@ -2,14 +2,14 @@
 Tests for CLI functionality.
 """
 
+import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-import os
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from security_scanner.cli import main, create_parser, show_patterns
+from security_scanner.cli import create_parser, main, show_patterns
 from security_scanner.scanner import ScanResult
 
 

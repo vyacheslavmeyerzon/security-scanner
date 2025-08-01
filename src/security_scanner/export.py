@@ -3,12 +3,12 @@ Export functionality for security scanner reports.
 """
 
 import csv
+import html
 import json
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-import html
-from collections import Counter, defaultdict
+from typing import Any, Dict, List, Optional
 
 
 class ReportGenerator:

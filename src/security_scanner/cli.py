@@ -3,16 +3,16 @@ Command-line interface for the security scanner.
 """
 
 import argparse
-from pathlib import Path
-from typing import Optional, List, Dict
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional
 
 from . import __version__
-from .scanner import SecurityScanner
-from .patterns import Severity
-from .utils import ColorPrinter, FileHelper
 from .config import ScannerConfig, create_example_config
 from .export import ReportGenerator
+from .patterns import Severity
+from .scanner import SecurityScanner
+from .utils import ColorPrinter, FileHelper
 
 
 def create_parser() -> argparse.ArgumentParser:
