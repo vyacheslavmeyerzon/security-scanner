@@ -5,7 +5,7 @@ This package provides functionality to scan Git repositories for exposed secrets
 API keys, passwords, and other sensitive information.
 """
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __author__ = "Vyacheslav Meyerzon"
 __email__ = "vyacheslav.meyerzon@gmail.com"
 
